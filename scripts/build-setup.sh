@@ -297,6 +297,22 @@ if [ \$? -ne 0 ]; then
     return 1
 fi
 
+DRAMSIM2_INCLUDE="$CYDIR/tools/DRAMSim2"
+
+if [ -n "\$RISCV" ]; then
+    if [ -n "\${C_INCLUDE_PATH-}" ]; then
+        export C_INCLUDE_PATH="\$RISCV/include:\$DRAMSIM2_INCLUDE:\$C_INCLUDE_PATH"
+    else
+        export C_INCLUDE_PATH="\$RISCV/include:\$DRAMSIM2_INCLUDE"
+    fi
+
+    if [ -n "\${CPLUS_INCLUDE_PATH-}" ]; then
+        export CPLUS_INCLUDE_PATH="\$RISCV/include:\$DRAMSIM2_INCLUDE:\$CPLUS_INCLUDE_PATH"
+    else
+        export CPLUS_INCLUDE_PATH="\$RISCV/include:\$DRAMSIM2_INCLUDE"
+    fi
+fi
+
 echo \"Chipyard Pixi environment activated in current shell\"
 
 source $CYDIR/scripts/fix-open-files.sh"
