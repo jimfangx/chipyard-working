@@ -150,6 +150,12 @@ function exit_if_last_command_failed
     fi
 }
 
+function version_ge
+{
+    [ "$1" = "$2" ] && return 0
+    [ "$(printf '%s\n%s\n' "$1" "$2" | sort -V | tail -n1)" = "$1" ]
+}
+
 # add helper variable pointing to current chipyard top-level dir
 replace_content env.sh cy-dir-helper "CY_DIR=${CYDIR}"
 
@@ -157,6 +163,19 @@ replace_content env.sh cy-dir-helper "CY_DIR=${CYDIR}"
 if run_step "1"; then
     begin_step "1" "Pixi environment setup"
     PIXI_MANIFEST=$CYDIR/pixi-reqs/pixi.toml
+    PIXI_LOCK=$CYDIR/pixi-reqs/pixi.lock
+    MANIFEST_SYSROOT_VERSION=""
+
+    # Detect host glibc and export an override for conda-style solving paths.
+    # This helps avoid selecting binaries that require a newer glibc than host.
+    HOST_GLIBC_VERSION=""
+    if type ldd >& /dev/null; then
+        HOST_GLIBC_VERSION="$(ldd --version 2>/dev/null | head -n1 | sed -E 's/.* ([0-9]+\.[0-9]+).*/\1/')"
+        if [[ "$HOST_GLIBC_VERSION" =~ ^[0-9]+\.[0-9]+$ ]]; then
+            export CONDA_OVERRIDE_GLIBC="$HOST_GLIBC_VERSION"
+            echo "Detected host glibc $HOST_GLIBC_VERSION (exported CONDA_OVERRIDE_GLIBC)"
+        fi
+    fi
 
     if ! type pixi >& /dev/null; then
         die "pixi is required for step 1 but was not found on PATH"
@@ -164,6 +183,17 @@ if run_step "1"; then
 
     if [ ! -f "$PIXI_MANIFEST" ]; then
         die "Pixi manifest not found at $PIXI_MANIFEST"
+    fi
+
+    MANIFEST_SYSROOT_VERSION="$(grep -m1 -E '^sysroot_linux-64 = "[0-9]+\.[0-9]+\.\*"' "$PIXI_MANIFEST" | sed -E 's/.*"([0-9]+\.[0-9]+)\.\*".*/\1/')"
+
+    if [[ "$HOST_GLIBC_VERSION" =~ ^[0-9]+\.[0-9]+$ ]] && [[ "$MANIFEST_SYSROOT_VERSION" =~ ^[0-9]+\.[0-9]+$ ]]; then
+        if ! version_ge "$HOST_GLIBC_VERSION" "$MANIFEST_SYSROOT_VERSION"; then
+            echo "Adjusting Pixi sysroot pin from $MANIFEST_SYSROOT_VERSION to host glibc $HOST_GLIBC_VERSION"
+            sed -i.bak -E "s/^sysroot_linux-64 = \"[0-9]+\.[0-9]+\\.\*\"/sysroot_linux-64 = \"$HOST_GLIBC_VERSION.*\"/" "$PIXI_MANIFEST"
+            rm -f "$PIXI_MANIFEST.bak"
+            MANIFEST_SYSROOT_VERSION="$HOST_GLIBC_VERSION"
+        fi
     fi
 
     if [ "$USE_LEAN_CONDA" = false ]; then
@@ -180,7 +210,42 @@ if run_step "1"; then
         echo "WARNING: --use-unpinned-deps is ignored when using Pixi."
     fi
 
-    PIXI_INSTALL_CMD=(pixi install --manifest-path "$PIXI_MANIFEST" --environment "$PIXI_ENV_NAME")
+    LOCK_NEEDS_UPDATE=false
+    LOCK_UPDATE_REASON=""
+    LOCKED_GLIBC_VERSION=""
+
+    if [ ! -f "$PIXI_LOCK" ]; then
+        LOCK_NEEDS_UPDATE=true
+        LOCK_UPDATE_REASON="missing lockfile"
+    elif ! pixi lock --manifest-path "$PIXI_MANIFEST" --check > /dev/null 2>&1; then
+        LOCK_NEEDS_UPDATE=true
+        LOCK_UPDATE_REASON="manifest and lockfile are out of sync"
+    else
+        LOCKED_GLIBC_VERSION="$(grep -m1 -E 'sysroot_linux-64 ==[0-9]+\.[0-9]+' "$PIXI_LOCK" | sed -E 's/.*==([0-9]+\.[0-9]+).*/\1/')"
+        if [ -z "$LOCKED_GLIBC_VERSION" ]; then
+            LOCKED_GLIBC_VERSION="$(grep -m1 -E 'sysroot_linux-64-[0-9]+\.[0-9]+' "$PIXI_LOCK" | sed -E 's/.*sysroot_linux-64-([0-9]+\.[0-9]+).*/\1/')"
+        fi
+    fi
+
+    if [[ "$HOST_GLIBC_VERSION" =~ ^[0-9]+\.[0-9]+$ ]]; then
+        if [ -z "$LOCKED_GLIBC_VERSION" ]; then
+            LOCK_NEEDS_UPDATE=true
+            LOCK_UPDATE_REASON="unable to determine locked sysroot glibc"
+        elif ! version_ge "$HOST_GLIBC_VERSION" "$LOCKED_GLIBC_VERSION"; then
+            LOCK_NEEDS_UPDATE=true
+            LOCK_UPDATE_REASON="host glibc $HOST_GLIBC_VERSION is older than locked sysroot $LOCKED_GLIBC_VERSION"
+        fi
+    fi
+
+    if [ "$LOCK_NEEDS_UPDATE" = true ]; then
+        echo "Refreshing Pixi lockfile ($LOCK_UPDATE_REASON)"
+        pixi lock --manifest-path "$PIXI_MANIFEST"
+        exit_if_last_command_failed
+    else
+        echo "Pixi lockfile is up to date; skipping lock resolution"
+    fi
+
+    PIXI_INSTALL_CMD=(pixi install --manifest-path "$PIXI_MANIFEST" --environment "$PIXI_ENV_NAME" --locked)
     printf -v PIXI_INSTALL_SHELL_CMD '%q ' "${PIXI_INSTALL_CMD[@]}"
     echo "Running: ${PIXI_INSTALL_CMD[*]}"
 
