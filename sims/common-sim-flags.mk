@@ -12,7 +12,7 @@ SIM_CXXFLAGS = \
 	$(SIM_OPT_CXXFLAGS) \
 	-std=c++17 \
 	-I$(RISCV)/include \
-	-I$(dramsim_dir) \
+	-I$(dramsim3_dir)/src \
 	-I$(GEN_COLLATERAL_DIR) \
 	$(EXTRA_SIM_CXXFLAGS)
 
@@ -22,10 +22,9 @@ SIM_LDFLAGS = \
 	-L$(RISCV)/lib \
 	-Wl,-rpath,$(RISCV)/lib \
 	-L$(sim_dir) \
-	-L$(dramsim_dir) \
 	$(LRISCV) \
 	-lfesvr \
-	-ldramsim \
+	$(dramsim3_dir)/libdramsim3.a \
 	$(EXTRA_SIM_LDFLAGS)
 
 CLOCK_PERIOD ?= 1.0
