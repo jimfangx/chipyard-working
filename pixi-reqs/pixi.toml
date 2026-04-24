@@ -138,3 +138,7 @@ docs = ["default", "docs"]
 riscv-tools = ["default", "riscv-tools"]
 full = ["default", "base", "extended", "docs", "riscv-tools"]
 lean = ["default", "base", "docs", "riscv-tools"]
+
+[dependencies]
+libnuma = ">=2.0.18,<3"
+numactl = ">=2.0.18,<3"

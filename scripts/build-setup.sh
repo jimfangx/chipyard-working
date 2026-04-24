@@ -315,6 +315,19 @@ fi
 
 echo \"Chipyard Pixi environment activated in current shell\"
 
+# After 'pixi add/remove/update', automatically re-install the active environment
+# (full or lean) so the change takes effect immediately.
+pixi() {
+    command pixi \"\$@\"
+    local ret=\$?
+    if [[ \$ret -eq 0 && \"\$1\" =~ ^(add|remove|update)\$ ]]; then
+        echo \":: Re-installing pixi environment '\${PIXI_ENVIRONMENT_NAME}' ...\"
+        command pixi install --manifest-path \"$CYDIR/pixi-reqs/pixi.toml\" \\
+            --environment \"\${PIXI_ENVIRONMENT_NAME:-$PIXI_ENV_NAME}\"
+    fi
+    return \$ret
+}
+
 source $CYDIR/scripts/fix-open-files.sh"
 fi
 
