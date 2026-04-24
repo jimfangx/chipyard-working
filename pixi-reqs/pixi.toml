@@ -132,9 +132,9 @@ docutils = "*"
 riscv-tools = "==1.0.6"
 
 [environments]
-base = ["base"]
-extended = ["base", "extended"]
-docs = ["docs"]
-riscv-tools = ["riscv-tools"]
-full = ["base", "extended", "docs", "riscv-tools"]
-lean = ["base", "docs", "riscv-tools"]
+base = ["default", "base"]
+extended = ["default", "base", "extended"]
+docs = ["default", "docs"]
+riscv-tools = ["default", "riscv-tools"]
+full = ["default", "base", "extended", "docs", "riscv-tools"]
+lean = ["default", "base", "docs", "riscv-tools"]
