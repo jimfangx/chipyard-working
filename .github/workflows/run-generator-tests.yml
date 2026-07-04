@@ -6,6 +6,12 @@ on:
       container_image:
         required: true
         type: string
+  workflow_dispatch:
+    inputs:
+      container_image:
+        description: GHCR image ref built by CircleCI
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -22,13 +28,22 @@ jobs:
     outputs:
       test_names: ${{ steps.tests.outputs.test_names }}
     steps:
-      - name: Check out pull request
-        uses: actions/checkout@v4
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Read generator test names
+      - name: Read generator test names from container
         id: tests
+        env:
+          CONTAINER_IMAGE: ${{ inputs.container_image }}
         run: |
-          test_names="$(python3 -c 'import json; print(json.dumps(sorted(json.load(open(".github/workflows/config/generator-tests.json")).keys())))')"
+          test_names="$(
+            docker run --rm "${CONTAINER_IMAGE}" \
+              python3 -c 'import json; print(json.dumps(sorted(json.load(open("/root/chipyard/.github/workflows/config/generator-tests.json")).keys())))'
+          )"
           echo "test_names=${test_names}" >> "${GITHUB_OUTPUT}"
 
   run-generator-test:

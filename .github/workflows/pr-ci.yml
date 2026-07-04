@@ -11,52 +11,127 @@ on:
       - unlabeled
 
 permissions:
-  actions: write
   contents: read
-  packages: write
   pull-requests: read
 
 concurrency:
   group: pr-ci-${{ github.event.pull_request.number }}
-  cancel-in-progress: ${{ contains(github.event.pull_request.labels.*.name, 'ci:disable') }}
+  cancel-in-progress: true
 
 jobs:
-  check-ci-disable:
-    name: check-ci-disable
+  circleci-orchestrator:
+    name: circleci-orchestrator
     if: ${{ github.event.pull_request.user.login != 'dependabot[bot]' }}
-    uses: ./.github/workflows/check-ci-disable.yml
-    with:
-      pr_number: ${{ github.event.pull_request.number }}
-      pr_head_ref: ${{ github.event.pull_request.head.ref }}
-      pr_head_repo_id: ${{ github.event.pull_request.head.repo.id }}
-      pr_labels: ${{ toJson(github.event.pull_request.labels.*.name) }}
+    runs-on: ubuntu-latest
+    env:
+      CIRCLECI_TOKEN: ${{ secrets.CIRCLECI_TOKEN }}
+      CIRCLECI_PROJECT_SLUG: gh/${{ github.repository }}
+      PR_HEAD_REF: ${{ github.event.pull_request.head.ref }}
+      PR_LABELS: ${{ toJson(github.event.pull_request.labels.*.name) }}
+      PR_NUMBER: ${{ github.event.pull_request.number }}
+    steps:
+      - name: Check ci:disable label
+        id: ci-label
+        run: |
+          if jq -e 'index("ci:disable") != null' <<< "${PR_LABELS}" > /dev/null; then
+            echo "ci_disabled=true" >> "${GITHUB_OUTPUT}"
+            echo "ci:disable is present; CircleCI workflows for this PR will be canceled." >> "${GITHUB_STEP_SUMMARY}"
+          else
+            echo "ci_disabled=false" >> "${GITHUB_OUTPUT}"
+            echo "ci:disable is not present; CircleCI will be triggered." >> "${GITHUB_STEP_SUMMARY}"
+          fi
 
-  build-setup-ubuntu:
-    name: build-setup ubuntu
-    needs: check-ci-disable
-    if: ${{ needs.check-ci-disable.outputs.ci_disabled != 'true' }}
-    uses: ./.github/workflows/build-setup-ubuntu.yml
+      - name: Cancel CircleCI workflows for this PR
+        if: ${{ steps.ci-label.outputs.ci_disabled == 'true' }}
+        run: |
+          if [ -z "${CIRCLECI_TOKEN}" ]; then
+            echo "CIRCLECI_TOKEN is required to cancel CircleCI workflows." >&2
+            exit 1
+          fi
 
-  build-setup-rhel:
-    name: build-setup rhel
-    needs: check-ci-disable
-    if: ${{ needs.check-ci-disable.outputs.ci_disabled != 'true' }}
-    uses: ./.github/workflows/build-setup-rhel.yml
+          python3 <<'PY'
+          import json
+          import os
+          import urllib.parse
+          import urllib.request
 
-  build-and-publish-container:
-    name: build and publish container
-    needs:
-      - build-setup-ubuntu
-      - build-setup-rhel
-    uses: ./.github/workflows/build-and-publish-container.yml
-    with:
-      chipyard_ref: ${{ format('{0}', github.event.pull_request.number) }}
-    secrets: inherit
+          token = os.environ["CIRCLECI_TOKEN"]
+          project_slug = os.environ["CIRCLECI_PROJECT_SLUG"]
+          pr_head_ref = os.environ["PR_HEAD_REF"]
+          pr_number = os.environ["PR_NUMBER"]
+          base_url = "https://circleci.com/api/v2"
+          headers = {"Circle-Token": token, "Accept": "application/json"}
+          cancel_statuses = {"created", "queued", "running", "on_hold", "not_run"}
 
-  run-generator-tests:
-    name: run generator tests
-    needs: build-and-publish-container
-    uses: ./.github/workflows/run-generator-tests.yml
-    with:
-      container_image: ${{ needs.build-and-publish-container.outputs.image_ref }}
-    secrets: inherit
+          def request_json(method, url, body=None):
+              data = None
+              request_headers = dict(headers)
+              if body is not None:
+                  data = json.dumps(body).encode("utf-8")
+                  request_headers["Content-Type"] = "application/json"
+              request = urllib.request.Request(url, data=data, headers=request_headers, method=method)
+              with urllib.request.urlopen(request) as response:
+                  if response.status == 204:
+                      return {}
+                  text = response.read().decode("utf-8")
+                  return json.loads(text) if text else {}
+
+          def get(path, params=None):
+              url = f"{base_url}{path}"
+              if params:
+                  url += "?" + urllib.parse.urlencode(params)
+              return request_json("GET", url)
+
+          def post(path):
+              return request_json("POST", f"{base_url}{path}", {})
+
+          pipelines = get(
+              f"/project/{project_slug}/pipeline",
+              {"branch": pr_head_ref},
+          ).get("items", [])
+
+          canceled = []
+          for pipeline in pipelines:
+              pipeline_id = pipeline["id"]
+              values = get(f"/pipeline/{pipeline_id}/values")
+              values_pr_number = str(values.get("pipeline.parameters.pr_number", ""))
+              values_run_ci = values.get("pipeline.parameters.run_ci")
+              run_ci_enabled = values_run_ci is True or str(values_run_ci).lower() == "true"
+              if values_pr_number != pr_number or not run_ci_enabled:
+                  continue
+
+              workflows = get(f"/pipeline/{pipeline_id}/workflow").get("items", [])
+              for workflow in workflows:
+                  if workflow.get("status") not in cancel_statuses:
+                      continue
+                  post(f"/workflow/{workflow['id']}/cancel")
+                  canceled.append(f"{workflow.get('name', workflow['id'])}:{workflow.get('status')}")
+
+          print(f"Canceled {len(canceled)} CircleCI workflow(s): {', '.join(canceled) or 'none'}")
+          PY
+
+      - name: Trigger CircleCI workflow for this PR
+        if: ${{ steps.ci-label.outputs.ci_disabled != 'true' }}
+        run: |
+          if [ -z "${CIRCLECI_TOKEN}" ]; then
+            echo "CIRCLECI_TOKEN is required to trigger CircleCI." >&2
+            exit 1
+          fi
+
+          jq -n \
+            --arg branch "${PR_HEAD_REF}" \
+            --arg pr_number "${PR_NUMBER}" \
+            '{
+              branch: $branch,
+              parameters: {
+                run_ci: true,
+                pr_number: $pr_number
+              }
+            }' > circleci-pipeline.json
+
+          curl -fsSL \
+            -X POST \
+            -H "Circle-Token: ${CIRCLECI_TOKEN}" \
+            -H "Content-Type: application/json" \
+            -d @circleci-pipeline.json \
+            "https://circleci.com/api/v2/project/${CIRCLECI_PROJECT_SLUG}/pipeline"
