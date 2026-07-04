@@ -3,9 +3,9 @@ name: run generator tests
 on:
   workflow_call:
     inputs:
-      container_image:
+      pr_number:
         required: true
-        type: string
+        type: number
 
 permissions:
   contents: read
@@ -22,8 +22,10 @@ jobs:
     outputs:
       test_names: ${{ steps.tests.outputs.test_names }}
     steps:
-      - name: Check out pull request
+      - name: Check out pull request merge ref
         uses: actions/checkout@v4
+        with:
+          ref: refs/pull/${{ inputs.pr_number }}/merge
 
       - name: Read generator test names
         id: tests
@@ -40,7 +42,7 @@ jobs:
       matrix:
         test_name: ${{ fromJson(needs.test-matrix.outputs.test_names) }}
     container:
-      image: ${{ inputs.container_image }}
+      image: ghcr.io/${{ github.repository }}:main
       credentials:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
@@ -48,6 +50,21 @@ jobs:
       FORCE_NON_EC2: 1
       JVM_OPTS: -Xmx3200m
     steps:
+      - name: Check out pull request merge ref inside container
+        env:
+          PR_NUMBER: ${{ inputs.pr_number }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          cd /root/chipyard
+          git config --global --add safe.directory "*"
+          git remote set-url origin "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}.git"
+          git -c "http.${GITHUB_SERVER_URL}/.extraheader=AUTHORIZATION: bearer ${GITHUB_TOKEN}" \
+            fetch --no-tags origin "pull/${PR_NUMBER}/merge"
+          git checkout --detach FETCH_HEAD
+          git submodule sync --recursive
+          git submodule update --init --recursive
+          git rev-parse --short HEAD
+
       - name: Compile tests
         run: |
           cd /root/chipyard

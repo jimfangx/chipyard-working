@@ -13,7 +13,7 @@ on:
 permissions:
   actions: write
   contents: read
-  packages: write
+  packages: read
   pull-requests: read
 
 concurrency:
@@ -43,20 +43,11 @@ jobs:
     if: ${{ needs.check-ci-disable.outputs.ci_disabled != 'true' }}
     uses: ./.github/workflows/build-setup-rhel.yml
 
-  build-and-publish-container:
-    name: build and publish container
-    needs:
-      - build-setup-ubuntu
-      - build-setup-rhel
-    uses: ./.github/workflows/build-and-publish-container.yml
-    with:
-      chipyard_ref: ${{ format('{0}', github.event.pull_request.number) }}
-    secrets: inherit
-
   run-generator-tests:
     name: run generator tests
-    needs: build-and-publish-container
+    needs: check-ci-disable
+    if: ${{ needs.check-ci-disable.outputs.ci_disabled != 'true' }}
     uses: ./.github/workflows/run-generator-tests.yml
     with:
-      container_image: ${{ needs.build-and-publish-container.outputs.image_ref }}
+      pr_number: ${{ github.event.pull_request.number }}
     secrets: inherit
