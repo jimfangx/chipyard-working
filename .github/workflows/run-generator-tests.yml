@@ -1,0 +1,62 @@
+name: run generator tests
+
+on:
+  workflow_call:
+    inputs:
+      container_image:
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  packages: read
+
+defaults:
+  run:
+    shell: bash -leo pipefail {0}
+
+jobs:
+  test-matrix:
+    name: test matrix
+    runs-on: ubuntu-latest
+    outputs:
+      test_names: ${{ steps.tests.outputs.test_names }}
+    steps:
+      - name: Check out pull request
+        uses: actions/checkout@v4
+
+      - name: Read generator test names
+        id: tests
+        run: |
+          test_names="$(python3 -c 'import json; print(json.dumps(sorted(json.load(open(".github/workflows/config/generator-tests.json")).keys())))')"
+          echo "test_names=${test_names}" >> "${GITHUB_OUTPUT}"
+
+  run-generator-test:
+    name: ${{ matrix.test_name }}
+    needs: test-matrix
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        test_name: ${{ fromJson(needs.test-matrix.outputs.test_names) }}
+    container:
+      image: ${{ inputs.container_image }}
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    env:
+      FORCE_NON_EC2: 1
+      JVM_OPTS: -Xmx3200m
+    steps:
+      - name: Compile tests
+        run: |
+          cd /root/chipyard
+          source env.sh
+          cmake -S tests -B tests/build -D CMAKE_BUILD_TYPE=Debug
+          cmake --build tests/build --target clean
+          cmake --build tests/build --target all
+
+      - name: Run generator test
+        run: |
+          cd /root/chipyard
+          python3 .github/scripts/run-generator-test.py "${{ matrix.test_name }}"

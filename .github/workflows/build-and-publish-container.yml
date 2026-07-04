@@ -3,9 +3,12 @@ name: build and publish container
 on:
   workflow_call:
     inputs:
-      chipyard-ref:
+      chipyard_ref:
         required: true
         type: string
+    outputs:
+      image_ref:
+        value: ${{ jobs.build-and-publish-container.outputs.image_ref }}
 
 permissions:
   contents: read
@@ -19,6 +22,8 @@ jobs:
   build-and-publish-container:
     name: build and publish container
     runs-on: ubuntu-24.04
+    outputs:
+      image_ref: ${{ steps.publish.outputs.image_ref }}
     env:
       DOCKER_DATA_ROOT: ${{ github.workspace }}/.ci/docker
       FORCE_NON_EC2: 1
@@ -27,7 +32,7 @@ jobs:
         uses: jimfangx/maximize-build-space@master
         with:
           root-reserve-mb: 512
-          swap-size-mb: 1024
+          swap-size-mb: 4096
           remove-dotnet: 'true'
           remove-android: 'true'
           remove-haskell: 'true'
@@ -52,12 +57,13 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and publish container
+        id: publish
         env:
-          CHIPYARD_REF: ${{ inputs.chipyard-ref }}
+          CHIPYARD_REF: ${{ inputs.chipyard_ref }}
         run: |
           image_name="ghcr.io/${GITHUB_REPOSITORY,,}"
-          short_sha="${GITHUB_SHA::12}"
           unix_timestamp="$(date +%s)"
+          image_ref="${image_name}:pr-${CHIPYARD_REF}"
 
           docker build \
             --file dockerfiles/Dockerfile \
@@ -65,7 +71,8 @@ jobs:
             --build-arg "CHIPYARD_REPO=${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}.git" \
             --build-arg "CHIPYARD_REF=${CHIPYARD_REF}" \
             --label "org.chipyard.ci.unix-timestamp=${unix_timestamp}" \
-            --tag "${image_name}:pr-${CHIPYARD_REF}-${short_sha}-${unix_timestamp}" \
+            --tag "${image_ref}" \
             .
 
-          docker push "${image_name}:pr-${CHIPYARD_REF}-${short_sha}-${unix_timestamp}"
+          docker push "${image_ref}"
+          echo "image_ref=${image_ref}" >> "${GITHUB_OUTPUT}"
