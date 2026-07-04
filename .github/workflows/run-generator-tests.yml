@@ -53,13 +53,11 @@ jobs:
       - name: Check out pull request merge ref inside container
         env:
           PR_NUMBER: ${{ inputs.pr_number }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           cd /root/chipyard
           git config --global --add safe.directory "*"
           git remote set-url origin "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}.git"
-          git -c "http.${GITHUB_SERVER_URL}/.extraheader=AUTHORIZATION: bearer ${GITHUB_TOKEN}" \
-            fetch --no-tags origin "pull/${PR_NUMBER}/merge"
+          git fetch --no-tags origin "pull/${PR_NUMBER}/merge"
           git checkout --detach FETCH_HEAD
           git submodule sync --recursive
           git submodule update --init --recursive
