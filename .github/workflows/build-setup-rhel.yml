@@ -14,8 +14,10 @@ jobs:
   build-setup-rhel:
     name: build-setup rhel
     runs-on: ubuntu-latest
+    timeout-minutes: 120
     env:
       DOCKER_DATA_ROOT: ${{ github.workspace }}/.ci/docker
+      FORCE_NON_EC2: 1
       RHEL_CONDA_INSTALL_DIR: /workspace/.ci/rhel-conda
     steps:
       - name: Maximize build space
@@ -45,6 +47,7 @@ jobs:
             --volume "${GITHUB_WORKSPACE}:/workspace" \
             --workdir /workspace \
             --env "CONDA_INSTALL_DIR=${RHEL_CONDA_INSTALL_DIR}" \
+            --env "FORCE_NON_EC2=${FORCE_NON_EC2}" \
             registry.access.redhat.com/ubi9/ubi:latest \
             bash -leo pipefail -c '
               dnf install -y \
@@ -62,7 +65,7 @@ jobs:
                 which \
                 xz
 
-              git config --global --add safe.directory /workspace
+              git config --global --add safe.directory "*"
 
               mkdir -p "$(dirname "${CONDA_INSTALL_DIR}")"
               wget -O Miniforge3.sh "https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-$(uname)-$(uname -m).sh"

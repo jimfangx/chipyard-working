@@ -14,8 +14,10 @@ jobs:
   build-setup-ubuntu:
     name: build-setup ubuntu
     runs-on: ubuntu-24.04
+    timeout-minutes: 120
     env:
       CONDA_INSTALL_DIR: ${{ github.workspace }}/.ci/conda
+      FORCE_NON_EC2: 1
     steps:
       - name: Maximize build space
         uses: jimfangx/maximize-build-space@master
@@ -43,6 +45,7 @@ jobs:
 
       - name: Run build setup
         run: |
+          git config --global --add safe.directory "*"
           source "${CONDA_INSTALL_DIR}/etc/profile.d/conda.sh"
           if [ -f "${CONDA_INSTALL_DIR}/etc/profile.d/mamba.sh" ]; then
             source "${CONDA_INSTALL_DIR}/etc/profile.d/mamba.sh"
