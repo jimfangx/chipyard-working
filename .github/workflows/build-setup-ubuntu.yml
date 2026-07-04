@@ -14,6 +14,8 @@ jobs:
   build-setup-ubuntu:
     name: build-setup ubuntu
     runs-on: ubuntu-24.04
+    env:
+      CONDA_INSTALL_DIR: ${{ github.workspace }}/.ci/conda
     steps:
       - name: Maximize build space
         uses: jimfangx/maximize-build-space@master
@@ -25,24 +27,25 @@ jobs:
           remove-haskell: 'true'
           remove-codeql: 'true'
 
-      - name: Install conda
-        run: |
-          wget -O Miniforge3.sh "https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-$(uname)-$(uname -m).sh"
-          bash Miniforge3.sh -b -p "${HOME}/conda"
-          source "${HOME}/conda/etc/profile.d/conda.sh"
-          if [ -f "${HOME}/conda/etc/profile.d/mamba.sh" ]; then
-            source "${HOME}/conda/etc/profile.d/mamba.sh"
-          fi
-          conda activate
-
       - name: Check out pull request
         uses: actions/checkout@v4
 
+      - name: Install conda
+        run: |
+          mkdir -p "$(dirname "${CONDA_INSTALL_DIR}")"
+          wget -O Miniforge3.sh "https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-$(uname)-$(uname -m).sh"
+          bash Miniforge3.sh -b -p "${CONDA_INSTALL_DIR}"
+          source "${CONDA_INSTALL_DIR}/etc/profile.d/conda.sh"
+          if [ -f "${CONDA_INSTALL_DIR}/etc/profile.d/mamba.sh" ]; then
+            source "${CONDA_INSTALL_DIR}/etc/profile.d/mamba.sh"
+          fi
+          conda activate
+
       - name: Run build setup
         run: |
-          source "${HOME}/conda/etc/profile.d/conda.sh"
-          if [ -f "${HOME}/conda/etc/profile.d/mamba.sh" ]; then
-            source "${HOME}/conda/etc/profile.d/mamba.sh"
+          source "${CONDA_INSTALL_DIR}/etc/profile.d/conda.sh"
+          if [ -f "${CONDA_INSTALL_DIR}/etc/profile.d/mamba.sh" ]; then
+            source "${CONDA_INSTALL_DIR}/etc/profile.d/mamba.sh"
           fi
           conda activate
           ./build-setup.sh riscv-tools

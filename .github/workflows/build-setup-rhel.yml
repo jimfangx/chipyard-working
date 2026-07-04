@@ -14,6 +14,9 @@ jobs:
   build-setup-rhel:
     name: build-setup rhel
     runs-on: ubuntu-latest
+    env:
+      DOCKER_DATA_ROOT: ${{ github.workspace }}/.ci/docker
+      RHEL_CONDA_INSTALL_DIR: /workspace/.ci/rhel-conda
     steps:
       - name: Maximize build space
         uses: jimfangx/maximize-build-space@master
@@ -28,11 +31,20 @@ jobs:
       - name: Check out pull request
         uses: actions/checkout@v4
 
+      - name: Move Docker storage to workspace
+        run: |
+          sudo systemctl stop docker
+          sudo mkdir -p "${DOCKER_DATA_ROOT}"
+          printf '{ "data-root": "%s" }\n' "${DOCKER_DATA_ROOT}" | sudo tee /etc/docker/daemon.json
+          sudo systemctl start docker
+          docker info --format 'Docker root: {{ .DockerRootDir }}'
+
       - name: Run build setup in RHEL 9
         run: |
           docker run --rm \
             --volume "${GITHUB_WORKSPACE}:/workspace" \
             --workdir /workspace \
+            --env "CONDA_INSTALL_DIR=${RHEL_CONDA_INSTALL_DIR}" \
             registry.access.redhat.com/ubi9/ubi:latest \
             bash -leo pipefail -c '
               dnf install -y \
@@ -52,11 +64,12 @@ jobs:
 
               git config --global --add safe.directory /workspace
 
+              mkdir -p "$(dirname "${CONDA_INSTALL_DIR}")"
               wget -O Miniforge3.sh "https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-$(uname)-$(uname -m).sh"
-              bash Miniforge3.sh -b -p "${HOME}/conda"
-              source "${HOME}/conda/etc/profile.d/conda.sh"
-              if [ -f "${HOME}/conda/etc/profile.d/mamba.sh" ]; then
-                source "${HOME}/conda/etc/profile.d/mamba.sh"
+              bash Miniforge3.sh -b -p "${CONDA_INSTALL_DIR}"
+              source "${CONDA_INSTALL_DIR}/etc/profile.d/conda.sh"
+              if [ -f "${CONDA_INSTALL_DIR}/etc/profile.d/mamba.sh" ]; then
+                source "${CONDA_INSTALL_DIR}/etc/profile.d/mamba.sh"
               fi
               conda activate
 
