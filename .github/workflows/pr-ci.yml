@@ -129,7 +129,9 @@ jobs:
           fi
           project_slug="${CIRCLECI_PROJECT_SLUG}"
           echo "Using CircleCI project slug: ${project_slug}"
-          checkout_ref="pull/${PR_NUMBER}/merge"
+          # CircleCI GitHub App requires config and checkout refs to match.
+          # Jobs fetch pull/<PR>/merge themselves after CircleCI checks out this branch.
+          checkout_ref="${PR_HEAD_REF}"
 
           if [[ "${project_slug}" == circleci/* ]]; then
             if [ -z "${CIRCLECI_PIPELINE_DEFINITION_ID}" ]; then
