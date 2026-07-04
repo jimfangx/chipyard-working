@@ -56,14 +56,43 @@ jobs:
           image_name="ghcr.io/${GITHUB_REPOSITORY,,}"
           unix_timestamp="$(date +%s)"
           image_ref="${image_name}:main"
+          base_image="${image_name}:main-base-${unix_timestamp}"
+          container_name="chipyard-main-setup-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          trap 'docker rm -f "${container_name}" > /dev/null 2>&1 || true' EXIT
 
           docker build \
             --file dockerfiles/Dockerfile \
-            --target base-with-tools \
+            --target base \
             --build-arg "CHIPYARD_REPO=${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}.git" \
             --build-arg "CHIPYARD_REF=main" \
             --label "org.chipyard.ci.unix-timestamp=${unix_timestamp}" \
-            --tag "${image_ref}" \
+            --tag "${base_image}" \
             .
+
+          docker rm -f "${container_name}" > /dev/null 2>&1 || true
+          docker run \
+            --name "${container_name}" \
+            --privileged \
+            --env FORCE_NON_EC2="${FORCE_NON_EC2}" \
+            --env JVM_OPTS="-Xmx3200m" \
+            "${base_image}" \
+            bash -leo pipefail -c '
+              cd /root/chipyard
+              git config --global --add safe.directory "*"
+              source "${CONDA_INSTALL_DIR}/etc/profile.d/conda.sh"
+              if [ -f "${CONDA_INSTALL_DIR}/etc/profile.d/mamba.sh" ]; then
+                source "${CONDA_INSTALL_DIR}/etc/profile.d/mamba.sh"
+              fi
+              conda activate
+              ./build-setup.sh riscv-tools
+              grep -F "Setup complete!" build-setup.log
+            '
+
+          docker commit \
+            --change 'ENTRYPOINT ["chipyard/scripts/entrypoint.sh"]' \
+            --change 'CMD ["/bin/sh"]' \
+            --change "LABEL org.chipyard.ci.unix-timestamp=${unix_timestamp}" \
+            "${container_name}" \
+            "${image_ref}"
 
           docker push "${image_ref}"
