@@ -25,6 +25,7 @@ RUN apt-get update && \
     findutils \
     git \
     gzip \
+    kmod \
     make \
     patch \
     procps \
