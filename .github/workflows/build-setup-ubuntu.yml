@@ -1,0 +1,49 @@
+name: build-setup ubuntu
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash -leo pipefail {0}
+
+jobs:
+  build-setup-ubuntu:
+    name: build-setup ubuntu
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Maximize build space
+        uses: jimfangx/maximize-build-space@master
+        with:
+          root-reserve-mb: 512
+          swap-size-mb: 1024
+          remove-dotnet: 'true'
+          remove-android: 'true'
+          remove-haskell: 'true'
+          remove-codeql: 'true'
+
+      - name: Install conda
+        run: |
+          wget -O Miniforge3.sh "https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-$(uname)-$(uname -m).sh"
+          bash Miniforge3.sh -b -p "${HOME}/conda"
+          source "${HOME}/conda/etc/profile.d/conda.sh"
+          if [ -f "${HOME}/conda/etc/profile.d/mamba.sh" ]; then
+            source "${HOME}/conda/etc/profile.d/mamba.sh"
+          fi
+          conda activate
+
+      - name: Check out pull request
+        uses: actions/checkout@v4
+
+      - name: Run build setup
+        run: |
+          source "${HOME}/conda/etc/profile.d/conda.sh"
+          if [ -f "${HOME}/conda/etc/profile.d/mamba.sh" ]; then
+            source "${HOME}/conda/etc/profile.d/mamba.sh"
+          fi
+          conda activate
+          ./build-setup.sh riscv-tools
+          grep -F "Setup complete!" build-setup.log
