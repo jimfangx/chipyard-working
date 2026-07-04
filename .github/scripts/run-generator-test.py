@@ -15,11 +15,20 @@ def run_shell(command, chipyard_dir, sim_dir, env):
     )
     print("::group::" + command, flush=True)
     try:
-        subprocess.run(
+        process = subprocess.Popen(
             ["bash", "-leo", "pipefail", "-c", wrapped],
-            check=True,
             env=env,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            bufsize=1,
         )
+        assert process.stdout is not None
+        for line in process.stdout:
+            print(line, end="", flush=True)
+        returncode = process.wait()
+        if returncode != 0:
+            raise subprocess.CalledProcessError(returncode, ["bash", "-leo", "pipefail", "-c", wrapped])
     finally:
         print("::endgroup::", flush=True)
 
