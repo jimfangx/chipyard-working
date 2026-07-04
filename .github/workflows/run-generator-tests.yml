@@ -63,7 +63,7 @@ jobs:
           initialized_targets="$(mktemp)"
           new_targets="$(mktemp)"
           removed_targets="$(mktemp)"
-          git submodule status --recursive \
+          git submodule status \
             | awk 'substr($1, 1, 1) != "-" { print $2 }' \
             | sort -u > "${initialized_before}"
 
@@ -86,15 +86,15 @@ jobs:
 
           while read -r submodule_path; do
             [ -n "${submodule_path}" ] || continue
-            git submodule sync --recursive -- "${submodule_path}"
-            git submodule update --recursive -- "${submodule_path}"
+            git submodule sync -- "${submodule_path}"
+            git submodule update -- "${submodule_path}"
           done < "${initialized_targets}"
 
           while read -r submodule_path; do
             [ -n "${submodule_path}" ] || continue
             git submodule init -- "${submodule_path}"
-            git submodule sync --recursive -- "${submodule_path}"
-            git submodule update --init --recursive -- "${submodule_path}"
+            git submodule sync -- "${submodule_path}"
+            git submodule update --init -- "${submodule_path}"
           done < "${new_targets}"
 
           git rev-parse --short HEAD
