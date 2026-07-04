@@ -23,7 +23,7 @@ jobs:
       - name: Maximize build space
         uses: jimfangx/maximize-build-space@master
         with:
-          root-reserve-mb: 2048
+          root-reserve-mb: 4096
           swap-size-mb: 10240
           remove-dotnet: 'true'
           remove-android: 'true'

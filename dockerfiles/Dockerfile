@@ -1,3 +1,5 @@
+# syntax=docker/dockerfile:1-labs
+
 ### This is a full chipyard setup
 
 # BUILD BASE FOR CI
@@ -68,7 +70,7 @@ RUN wget -O Miniforge3.sh "https://github.com/conda-forge/miniforge/releases/lat
 # Use above build as base
 FROM base AS base-with-tools
 
-# Fully initialize Chipyard.
+# Conda environment and Chipyard submodules.
 RUN cd chipyard && \
     git config --global --add safe.directory "*" && \
     source "${CONDA_INSTALL_DIR}/etc/profile.d/conda.sh" && \
@@ -76,7 +78,56 @@ RUN cd chipyard && \
         source "${CONDA_INSTALL_DIR}/etc/profile.d/mamba.sh"; \
     fi && \
     conda activate && \
-    ./build-setup.sh riscv-tools && \
+    ./build-setup.sh riscv-tools \
+      -s 3 -s 4 -s 5 -s 6 -s 7 -s 8 -s 9 -s 10 -s 11
+
+# Toolchain.
+RUN cd chipyard && \
+    source "${CONDA_INSTALL_DIR}/etc/profile.d/conda.sh" && \
+    conda activate && \
+    source /root/chipyard/env.sh && \
+    ./build-setup.sh riscv-tools \
+      -s 1 -s 2 -s 5 -s 6 -s 7 -s 8 -s 9 -s 10 -s 11
+
+# Scala compile.
+RUN cd chipyard && \
+    source "${CONDA_INSTALL_DIR}/etc/profile.d/conda.sh" && \
+    conda activate && \
+    source /root/chipyard/env.sh && \
+    ./build-setup.sh riscv-tools \
+      -s 1 -s 2 -s 3 -s 4 -s 6 -s 7 -s 8 -s 9 -s 10 -s 11
+
+# FireSim initialization.
+RUN cd chipyard && \
+    source "${CONDA_INSTALL_DIR}/etc/profile.d/conda.sh" && \
+    conda activate && \
+    source /root/chipyard/env.sh && \
+    ./build-setup.sh riscv-tools \
+      -s 1 -s 2 -s 3 -s 4 -s 5 -s 9 -s 10 -s 11
+
+# FireMarshal buildroot Linux.
+RUN --security=insecure cd chipyard && \
+    source "${CONDA_INSTALL_DIR}/etc/profile.d/conda.sh" && \
+    conda activate && \
+    source /root/chipyard/env.sh && \
+    ./build-setup.sh riscv-tools \
+      -s 1 -s 2 -s 3 -s 4 -s 5 -s 6 -s 7 -s 8 -s 10 -s 11
+
+# CIRCT.
+RUN cd chipyard && \
+    source "${CONDA_INSTALL_DIR}/etc/profile.d/conda.sh" && \
+    conda activate && \
+    source /root/chipyard/env.sh && \
+    ./build-setup.sh riscv-tools \
+      -s 1 -s 2 -s 3 -s 4 -s 5 -s 6 -s 7 -s 8 -s 9 -s 11
+
+# Finish setup and verify completion.
+RUN cd chipyard && \
+    source "${CONDA_INSTALL_DIR}/etc/profile.d/conda.sh" && \
+    conda activate && \
+    source /root/chipyard/env.sh && \
+    ./build-setup.sh riscv-tools \
+      -s 1 -s 2 -s 3 -s 4 -s 5 -s 6 -s 7 -s 8 -s 9 -s 10 && \
     grep -F "Setup complete!" build-setup.log
 
 # Run script to set environment variables on entry

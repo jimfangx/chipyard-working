@@ -57,10 +57,46 @@ jobs:
           cd /root/chipyard
           git config --global --add safe.directory "*"
           git remote set-url origin "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}.git"
+
+          initialized_before="$(mktemp)"
+          submodules_after="$(mktemp)"
+          initialized_targets="$(mktemp)"
+          new_targets="$(mktemp)"
+          removed_targets="$(mktemp)"
+          git submodule status --recursive \
+            | awk 'substr($1, 1, 1) != "-" { print $2 }' \
+            | sort -u > "${initialized_before}"
+
           git fetch --no-tags origin "pull/${PR_NUMBER}/merge"
           git checkout --detach FETCH_HEAD
-          git submodule sync --recursive
-          git submodule update --init --recursive
+
+          git config --file .gitmodules --get-regexp '^submodule\..*\.path$' \
+            | awk '{ print $2 }' \
+            | sort -u > "${submodules_after}"
+
+          comm -12 "${initialized_before}" "${submodules_after}" > "${initialized_targets}"
+          comm -13 "${initialized_before}" "${submodules_after}" > "${new_targets}"
+          comm -23 "${initialized_before}" "${submodules_after}" > "${removed_targets}"
+
+          while read -r submodule_path; do
+            [ -n "${submodule_path}" ] || continue
+            git submodule deinit --force -- "${submodule_path}" || true
+            rm -rf -- "${submodule_path}"
+          done < "${removed_targets}"
+
+          while read -r submodule_path; do
+            [ -n "${submodule_path}" ] || continue
+            git submodule sync --recursive -- "${submodule_path}"
+            git submodule update --recursive -- "${submodule_path}"
+          done < "${initialized_targets}"
+
+          while read -r submodule_path; do
+            [ -n "${submodule_path}" ] || continue
+            git submodule init -- "${submodule_path}"
+            git submodule sync --recursive -- "${submodule_path}"
+            git submodule update --init --recursive -- "${submodule_path}"
+          done < "${new_targets}"
+
           git rev-parse --short HEAD
 
       - name: Compile tests
