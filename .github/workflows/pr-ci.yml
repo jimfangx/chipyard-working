@@ -25,7 +25,8 @@ jobs:
     runs-on: ubuntu-latest
     env:
       CIRCLECI_TOKEN: ${{ secrets.CIRCLECI_TOKEN }}
-      CIRCLECI_PROJECT_SLUG: gh/${{ github.repository }}
+      CIRCLECI_PROJECT_SLUG: ${{ vars.CIRCLECI_PROJECT_SLUG }}
+      DEFAULT_CIRCLECI_PROJECT_SLUG: gh/${{ github.repository }}
       PR_HEAD_REF: ${{ github.event.pull_request.head.ref }}
       PR_LABELS: ${{ toJson(github.event.pull_request.labels.*.name) }}
       PR_NUMBER: ${{ github.event.pull_request.number }}
@@ -48,6 +49,8 @@ jobs:
             echo "CIRCLECI_TOKEN is required to cancel CircleCI workflows." >&2
             exit 1
           fi
+          export CIRCLECI_PROJECT_SLUG="${CIRCLECI_PROJECT_SLUG:-${DEFAULT_CIRCLECI_PROJECT_SLUG}}"
+          echo "Using CircleCI project slug: ${CIRCLECI_PROJECT_SLUG}"
 
           python3 <<'PY'
           import json
@@ -117,6 +120,8 @@ jobs:
             echo "CIRCLECI_TOKEN is required to trigger CircleCI." >&2
             exit 1
           fi
+          project_slug="${CIRCLECI_PROJECT_SLUG:-${DEFAULT_CIRCLECI_PROJECT_SLUG}}"
+          echo "Using CircleCI project slug: ${project_slug}"
 
           jq -n \
             --arg branch "${PR_HEAD_REF}" \
@@ -134,4 +139,4 @@ jobs:
             -H "Circle-Token: ${CIRCLECI_TOKEN}" \
             -H "Content-Type: application/json" \
             -d @circleci-pipeline.json \
-            "https://circleci.com/api/v2/project/${CIRCLECI_PROJECT_SLUG}/pipeline"
+            "https://circleci.com/api/v2/project/${project_slug}/pipeline"
