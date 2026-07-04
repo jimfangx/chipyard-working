@@ -27,7 +27,6 @@ jobs:
       CIRCLECI_TOKEN: ${{ secrets.CIRCLECI_TOKEN }}
       CIRCLECI_PIPELINE_DEFINITION_ID: ${{ vars.CIRCLECI_PIPELINE_DEFINITION_ID }}
       CIRCLECI_PROJECT_SLUG: ${{ vars.CIRCLECI_PROJECT_SLUG }}
-      DEFAULT_CIRCLECI_PROJECT_SLUG: gh/${{ github.repository }}
       PR_HEAD_REF: ${{ github.event.pull_request.head.ref }}
       PR_LABELS: ${{ toJson(github.event.pull_request.labels.*.name) }}
       PR_NUMBER: ${{ github.event.pull_request.number }}
@@ -50,7 +49,10 @@ jobs:
             echo "CIRCLECI_TOKEN is required to cancel CircleCI workflows." >&2
             exit 1
           fi
-          export CIRCLECI_PROJECT_SLUG="${CIRCLECI_PROJECT_SLUG:-${DEFAULT_CIRCLECI_PROJECT_SLUG}}"
+          if [ -z "${CIRCLECI_PROJECT_SLUG}" ]; then
+            echo "CIRCLECI_PROJECT_SLUG repo variable is required." >&2
+            exit 1
+          fi
           echo "Using CircleCI project slug: ${CIRCLECI_PROJECT_SLUG}"
 
           python3 <<'PY'
@@ -121,7 +123,11 @@ jobs:
             echo "CIRCLECI_TOKEN is required to trigger CircleCI." >&2
             exit 1
           fi
-          project_slug="${CIRCLECI_PROJECT_SLUG:-${DEFAULT_CIRCLECI_PROJECT_SLUG}}"
+          if [ -z "${CIRCLECI_PROJECT_SLUG}" ]; then
+            echo "CIRCLECI_PROJECT_SLUG repo variable is required." >&2
+            exit 1
+          fi
+          project_slug="${CIRCLECI_PROJECT_SLUG}"
           echo "Using CircleCI project slug: ${project_slug}"
           checkout_ref="pull/${PR_NUMBER}/merge"
 
@@ -135,7 +141,7 @@ jobs:
             trigger_url="https://circleci.com/api/v2/project/${circleci_provider}/${circleci_org}/${circleci_project}/pipeline/run"
             jq -n \
               --arg definition_id "${CIRCLECI_PIPELINE_DEFINITION_ID}" \
-              --arg config_branch "${PR_HEAD_REF}" \
+              --arg config_branch "${checkout_ref}" \
               --arg checkout_branch "${checkout_ref}" \
               --arg pr_number "${PR_NUMBER}" \
               '{
