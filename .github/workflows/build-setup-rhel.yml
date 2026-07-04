@@ -18,6 +18,7 @@ jobs:
     env:
       DOCKER_DATA_ROOT: ${{ github.workspace }}/.ci/docker
       FORCE_NON_EC2: 1
+      JVM_OPTS: -Xmx3200m
       RHEL_CONDA_INSTALL_DIR: /workspace/.ci/rhel-conda
     steps:
       - name: Maximize build space
@@ -48,6 +49,7 @@ jobs:
             --workdir /workspace \
             --env "CONDA_INSTALL_DIR=${RHEL_CONDA_INSTALL_DIR}" \
             --env "FORCE_NON_EC2=${FORCE_NON_EC2}" \
+            --env "JVM_OPTS=${JVM_OPTS}" \
             registry.access.redhat.com/ubi9/ubi:latest \
             bash -leo pipefail -c '
               dnf install -y \

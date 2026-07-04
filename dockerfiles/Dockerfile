@@ -12,6 +12,7 @@ SHELL ["/bin/bash", "-leo", "pipefail", "-c"]
 
 ENV CONDA_INSTALL_DIR=/opt/conda
 ENV FORCE_NON_EC2=1
+ENV JVM_OPTS=-Xmx3200m
 ENV PATH="${CONDA_INSTALL_DIR}/bin:${PATH}"
 
 # Install host dependencies needed to clone Chipyard and bootstrap conda.
