@@ -230,7 +230,7 @@
   "chipyard-cva6": [
     {
       "custom": true,
-      "string": "if ! git -C \"$LOCAL_CHIPYARD_DIR/generators/cva6\" rev-parse --is-inside-work-tree >/dev/null 2>&1; then git -C \"$LOCAL_CHIPYARD_DIR\" submodule update --init generators/cva6; fi && git -C \"$LOCAL_CHIPYARD_DIR/generators/cva6\" submodule update --init --recursive && make run-binary-fast CONFIG=CVA6Config BINARY=$RISCV/riscv64-unknown-elf/share/riscv-tests/benchmarks/multiply.riscv"
+      "string": "if ! git -C \"$LOCAL_CHIPYARD_DIR/generators/cva6\" rev-parse --is-inside-work-tree >/dev/null 2>&1; then git -C \"$LOCAL_CHIPYARD_DIR\" submodule update --init generators/cva6; fi && git -C \"$LOCAL_CHIPYARD_DIR/generators/cva6\" submodule update --init --recursive && make run-binary-fast -j$(nproc) CONFIG=CVA6Config BINARY=$RISCV/riscv64-unknown-elf/share/riscv-tests/benchmarks/multiply.riscv"
     }
   ],
   "chipyard-ibex": [
