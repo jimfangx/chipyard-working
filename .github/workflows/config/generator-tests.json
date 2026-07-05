@@ -230,7 +230,7 @@
   "chipyard-cva6": [
     {
       "custom": true,
-      "string": "git -C generators/cva6 submodule update --init src/main/resources/cva6/vsrc/cva6 && make run-binary-fast CONFIG=CVA6Config BINARY=$RISCV/riscv64-unknown-elf/share/riscv-tests/benchmarks/multiply.riscv"
+      "string": "test -d generators/cva6 || git submodule update --init generators/cva6 && git -C generators/cva6 submodule update --init src/main/resources/cva6/vsrc/cva6 && make run-binary-fast CONFIG=CVA6Config BINARY=$RISCV/riscv64-unknown-elf/share/riscv-tests/benchmarks/multiply.riscv"
     }
   ],
   "chipyard-ibex": [

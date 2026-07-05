@@ -63,7 +63,6 @@ jobs:
                 git \
                 gzip \
                 kmod \
-                libguestfs-tools-c \
                 make \
                 patch \
                 procps-ng \
@@ -74,7 +73,9 @@ jobs:
                 wget \
                 which \
                 xz
-              command -v guestmount
+              printf "root ALL=(ALL) NOPASSWD:ALL\n" > /etc/sudoers.d/ci-root
+              chmod 0440 /etc/sudoers.d/ci-root
+              sudo -ln true
 
               git config --global --add safe.directory "*"
 
