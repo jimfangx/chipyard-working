@@ -106,7 +106,7 @@
   "chipyard-gemmini": [
     {
       "custom": true,
-      "string": "GEMMINI_SOFTWARE_DIR=$LOCAL_CHIPYARD_DIR/generators/gemmini/software/gemmini-rocc-tests && rm -rf $GEMMINI_SOFTWARE_DIR/riscv-tests && (cd $GEMMINI_SOFTWARE_DIR && ./build.sh bareMetalC) && make run-binary-fast CONFIG=GemminiRocketConfig BINARY=$GEMMINI_SOFTWARE_DIR/build/bareMetalC/aligned-baremetal LOADMEM=1 && make run-binary-fast CONFIG=GemminiRocketConfig BINARY=$GEMMINI_SOFTWARE_DIR/build/bareMetalC/raw_hazard-baremetal LOADMEM=1 && make run-binary-fast CONFIG=GemminiRocketConfig BINARY=$GEMMINI_SOFTWARE_DIR/build/bareMetalC/mvin_mvout-baremetal LOADMEM=1"
+      "string": "GEMMINI_SOFTWARE_DIR=$LOCAL_CHIPYARD_DIR/generators/gemmini/software/gemmini-rocc-tests && git -C $GEMMINI_SOFTWARE_DIR submodule update --init riscv-tests && (cd $GEMMINI_SOFTWARE_DIR && ./build.sh bareMetalC) && make run-binary-fast CONFIG=GemminiRocketConfig BINARY=$GEMMINI_SOFTWARE_DIR/build/bareMetalC/aligned-baremetal LOADMEM=1 && make run-binary-fast CONFIG=GemminiRocketConfig BINARY=$GEMMINI_SOFTWARE_DIR/build/bareMetalC/raw_hazard-baremetal LOADMEM=1 && make run-binary-fast CONFIG=GemminiRocketConfig BINARY=$GEMMINI_SOFTWARE_DIR/build/bareMetalC/mvin_mvout-baremetal LOADMEM=1"
     }
   ],
   "chipyard-mempress": [
@@ -142,13 +142,13 @@
   "chipyard-manyperipherals": [
     {
       "custom": true,
-      "string": "make run-binary-fast CONFIG=ManyPeripheralsRocketConfig EXTRA_SIM_FLAGS='+spiflash0=$LOCAL_CHIPYARD_DIR/tests/spiflash.img' BINARY=$LOCAL_CHIPYARD_DIR/tests/spiflashread.riscv"
+      "string": "make run-binary-fast CONFIG=ManyPeripheralsRocketConfig EXTRA_SIM_FLAGS=\"+spiflash0=$LOCAL_CHIPYARD_DIR/tests/spiflash.img\" BINARY=$LOCAL_CHIPYARD_DIR/tests/spiflashread.riscv"
     }
   ],
   "chipyard-spiflashwrite": [
     {
       "custom": true,
-      "string": "make run-binary-fast CONFIG=SmallSPIFlashRocketConfig EXTRA_SIM_FLAGS='+spiflash0=$LOCAL_CHIPYARD_DIR/tests/spiflash.img' BINARY=$LOCAL_CHIPYARD_DIR/tests/spiflashwrite.riscv LOADMEM=1 && [[ \"$(xxd $LOCAL_CHIPYARD_DIR/tests/spiflash.img | grep '1337 00ff aa55 face' | wc -l)\" == \"6\" ]]"
+      "string": "make run-binary-fast CONFIG=SmallSPIFlashRocketConfig EXTRA_SIM_FLAGS=\"+spiflash0=$LOCAL_CHIPYARD_DIR/tests/spiflash.img\" BINARY=$LOCAL_CHIPYARD_DIR/tests/spiflashwrite.riscv LOADMEM=1 && [[ \"$(xxd $LOCAL_CHIPYARD_DIR/tests/spiflash.img | grep '1337 00ff aa55 face' | wc -l)\" == \"6\" ]]"
     }
   ],
   "chipyard-tethered": [
@@ -230,7 +230,7 @@
   "chipyard-cva6": [
     {
       "custom": true,
-      "string": "make run-binary-fast CONFIG=CVA6Config BINARY=$RISCV/riscv64-unknown-elf/share/riscv-tests/benchmarks/multiply.riscv"
+      "string": "git submodule update --init generators/cva6 && git -C generators/cva6 submodule update --init src/main/resources/cva6/vsrc/cva6 && git -C generators/cva6/src/main/resources/cva6/vsrc/cva6 submodule update --init src/axi src/axi_riscv_atomics src/common_cells src/fpga-support src/riscv-dbg src/register_interface && git -C generators/cva6/src/main/resources/cva6/vsrc/cva6 submodule update --init --recursive src/fpu && make run-binary-fast CONFIG=CVA6Config BINARY=$RISCV/riscv64-unknown-elf/share/riscv-tests/benchmarks/multiply.riscv"
     }
   ],
   "chipyard-ibex": [
@@ -274,7 +274,7 @@
   "chipyard-zephyr": [
     {
       "custom": true,
-      "string": "make run-binary-fast BINARY=$LOCAL_CHIPYARD_DIR/software/zephyrproject/zephyr/build/zephyr/zephyr.elf LOADMEM=1"
+      "string": "bash $LOCAL_CHIPYARD_DIR/.github/scripts/build-zephyr.sh && make run-binary-fast BINARY=$LOCAL_CHIPYARD_DIR/software/zephyrproject/zephyr/build/zephyr/zephyr.elf LOADMEM=1"
     }
   ],
   "chipyard-radiance": [

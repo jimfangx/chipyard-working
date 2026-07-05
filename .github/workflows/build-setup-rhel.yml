@@ -49,6 +49,7 @@ jobs:
       - name: Run build setup in RHEL 9
         run: |
           docker run --rm \
+            --privileged \
             --volume "${GITHUB_WORKSPACE}:/workspace" \
             --workdir /workspace \
             --env "CONDA_INSTALL_DIR=${RHEL_CONDA_INSTALL_DIR}" \

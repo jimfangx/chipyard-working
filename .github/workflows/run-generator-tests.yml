@@ -41,19 +41,52 @@ jobs:
       fail-fast: false
       matrix:
         test_name: ${{ fromJson(needs.test-matrix.outputs.test_names) }}
-    container:
-      image: ghcr.io/${{ github.repository }}:main
-      credentials:
-        username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }}
     env:
+      DOCKER_DATA_ROOT: ${{ github.workspace }}/.ci/docker
       FORCE_NON_EC2: 1
       JVM_OPTS: -Xmx3200m
     steps:
-      - name: Check out pull request merge ref inside container
+      - name: Maximize build space
+        uses: jimfangx/maximize-build-space@master
+        with:
+          root-reserve-mb: 4096
+          swap-size-mb: 10240
+          remove-dotnet: 'true'
+          remove-android: 'true'
+          remove-haskell: 'true'
+          remove-codeql: 'true'
+
+      - name: Move Docker storage to workspace
+        run: |
+          sudo systemctl stop docker
+          sudo mkdir -p "${DOCKER_DATA_ROOT}"
+          printf '{ "data-root": "%s" }\n' "${DOCKER_DATA_ROOT}" | sudo tee /etc/docker/daemon.json
+          sudo systemctl start docker
+          docker info --format 'Docker root: {{ .DockerRootDir }}'
+
+      - name: Pull Chipyard container
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          image_name="ghcr.io/${GITHUB_REPOSITORY,,}:main"
+          echo "CHIPYARD_IMAGE=${image_name}" >> "${GITHUB_ENV}"
+          echo "${GITHUB_TOKEN}" | docker login ghcr.io -u "${GITHUB_ACTOR}" --password-stdin
+          docker pull "${image_name}"
+
+      - name: Run generator test in container
         env:
           PR_NUMBER: ${{ inputs.pr_number }}
+          TEST_NAME: ${{ matrix.test_name }}
         run: |
+          docker run --rm -i \
+            --env "FORCE_NON_EC2=${FORCE_NON_EC2}" \
+            --env "JVM_OPTS=${JVM_OPTS}" \
+            --env "PR_NUMBER=${PR_NUMBER}" \
+            --env "TEST_NAME=${TEST_NAME}" \
+            --env "GITHUB_SERVER_URL=${GITHUB_SERVER_URL}" \
+            --env "GITHUB_REPOSITORY=${GITHUB_REPOSITORY}" \
+            "${CHIPYARD_IMAGE}" \
+            bash -leo pipefail <<'CONTAINER_SCRIPT'
           cd /root/chipyard
           git config --global --add safe.directory "*"
           git remote set-url origin "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}.git"
@@ -99,10 +132,9 @@ jobs:
 
           git rev-parse --short HEAD
 
-# build tests in both tests/ and tests/build due to legacy paths
-      - name: Compile tests
-        run: |
-          cd /root/chipyard
+          bash .github/scripts/prepare-generator-test-submodules.sh "${TEST_NAME}" /root/chipyard
+
+          # Build tests in both tests/ and tests/build due to legacy paths.
           source env.sh
           cmake -S tests -B tests/ -D CMAKE_BUILD_TYPE=Debug
           cmake --build tests --target clean
@@ -111,8 +143,5 @@ jobs:
           cmake --build tests/build --target clean
           cmake --build tests/build --target all
 
-      - name: Run generator test
-        run: |
-          cd /root/chipyard
-          source env.sh
-          python3 .github/scripts/run-generator-test.py "${{ matrix.test_name }}"
+          python3 .github/scripts/run-generator-test.py "${TEST_NAME}"
+          CONTAINER_SCRIPT
