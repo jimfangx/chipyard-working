@@ -61,6 +61,7 @@ jobs:
                 bzip2 \
                 findutils \
                 git \
+                guestfs-tools \
                 gzip \
                 kmod \
                 make \
@@ -73,9 +74,8 @@ jobs:
                 wget \
                 which \
                 xz
-              printf "root ALL=(ALL) NOPASSWD:ALL\n" > /etc/sudoers.d/ci-root
-              chmod 0440 /etc/sudoers.d/ci-root
-              sudo -ln true
+              command -v guestmount
+              command -v guestunmount
 
               git config --global --add safe.directory "*"
 

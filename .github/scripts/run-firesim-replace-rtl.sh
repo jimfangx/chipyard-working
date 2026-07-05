@@ -6,6 +6,28 @@ pr_number="${2:?usage: run-firesim-replace-rtl.sh SUITE PR_NUMBER [CHIPYARD_DIR]
 chipyard_dir="${3:-/root/chipyard}"
 config_json="${4:-${chipyard_dir}/.github/workflows/config/firesim-tests.json}"
 
+source_with_nounset_disabled() {
+  local script="$1"
+  shift
+  local had_nounset=0
+
+  case "$-" in
+    *u*)
+      had_nounset=1
+      set +u
+      ;;
+  esac
+
+  # Conda activation/deactivation hooks can reference optional backup
+  # variables that are unset under bash nounset.
+  # shellcheck disable=SC1090
+  source "${script}" "$@"
+
+  if [ "${had_nounset}" -eq 1 ]; then
+    set -u
+  fi
+}
+
 checkout_pr_merge() {
   cd "${chipyard_dir}"
   git config --global --add safe.directory "*" 2>/dev/null || true
@@ -56,9 +78,9 @@ checkout_pr_merge() {
 
 prepare_firesim_environment() {
   cd "${chipyard_dir}"
-  source env.sh
+  source_with_nounset_disabled env.sh
   cd sims/firesim
-  source sourceme-manager.sh --skip-ssh-setup
+  source_with_nounset_disabled sourceme-manager.sh --skip-ssh-setup
 }
 
 prepare_f2_mgmt_tools() {
