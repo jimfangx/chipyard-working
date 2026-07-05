@@ -42,6 +42,10 @@ jobs:
           sudo systemctl start docker
           docker info --format 'Docker root: {{ .DockerRootDir }}'
 
+      - name: Exclude CI-managed directories from ctags
+        run: |
+          grep -qxF ".ci" .ctagsignore || printf "\n.ci\n" >> .ctagsignore
+
       - name: Run build setup in RHEL 9
         run: |
           docker run --rm \

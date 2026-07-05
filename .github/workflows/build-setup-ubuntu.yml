@@ -44,6 +44,10 @@ jobs:
           fi
           conda activate
 
+      - name: Exclude CI-managed directories from ctags
+        run: |
+          grep -qxF ".ci" .ctagsignore || printf "\n.ci\n" >> .ctagsignore
+
       - name: Run build setup
         run: |
           git config --global --add safe.directory "*"
