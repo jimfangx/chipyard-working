@@ -61,10 +61,12 @@ jobs:
                 findutils \
                 git \
                 gzip \
+                kmod \
                 make \
                 patch \
                 procps-ng \
                 python3 \
+                sudo \
                 tar \
                 unzip \
                 wget \

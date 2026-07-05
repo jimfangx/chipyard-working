@@ -480,6 +480,7 @@ RISCV_BMARK_TEST_NAMES ?= \
 
 RISCV_BMARK_TESTS ?= $(wildcard $(addprefix $(RISCV_TESTS_BENCHMARK_DIR)/,$(addsuffix .riscv,$(RISCV_BMARK_TEST_NAMES))))
 RUN_FAST_STATUS_DIR = $(output_dir)/run-fast-status
+RUN_FAST_SIM_READY = $(if $(SIM_PREREQ),$(output_dir)/run-fast-sim-ready)
 get_run_fast_status = $(RUN_FAST_STATUS_DIR)/$(1)/$(notdir $(basename $(2))).status
 RV64GC_ASM_TEST_STATUS = $(foreach binary,$(RV64GC_ASM_TESTS),$(call get_run_fast_status,asm,$(binary)))
 RISCV_BMARK_TEST_STATUS = $(foreach binary,$(RISCV_BMARK_TESTS),$(call get_run_fast_status,bmark,$(binary)))
@@ -496,10 +497,10 @@ endif
 endif
 
 define run_binary_fast_status_rule
-$(call get_run_fast_status,$(1),$(2)): FORCE | $(RUN_FAST_STATUS_DIR)/$(1)
+$(call get_run_fast_status,$(1),$(2)): FORCE | $(RUN_FAST_STATUS_DIR)/$(1) $(RUN_FAST_SIM_READY)
 	@rm -f "$$@"
 	@echo "========== Running $(3): $(2) =========="
-	@if $(MAKE) --no-print-directory run-binary-fast BINARY="$(2)"; then \
+	@if $(MAKE) --no-print-directory BREAK_SIM_PREREQ=1 run-binary-fast BINARY="$(2)"; then \
 	  printf 'PASS\t$(2)\n' > "$$@"; \
 	else \
 	  status="$$$$?"; \
@@ -512,6 +513,9 @@ $(foreach binary,$(RISCV_BMARK_TESTS),$(eval $(call run_binary_fast_status_rule,
 
 $(RUN_FAST_STATUS_DIR)/asm $(RUN_FAST_STATUS_DIR)/bmark:
 	mkdir -p $@
+
+$(RUN_FAST_SIM_READY): $(SIM_PREREQ) | $(output_dir)
+	touch $@
 
 .PHONY: FORCE
 FORCE:

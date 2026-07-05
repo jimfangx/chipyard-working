@@ -99,10 +99,14 @@ jobs:
 
           git rev-parse --short HEAD
 
+# build tests in both tests/ and tests/build due to legacy paths
       - name: Compile tests
         run: |
           cd /root/chipyard
           source env.sh
+          cmake -S tests -B tests/ -D CMAKE_BUILD_TYPE=Debug
+          cmake --build tests --target clean
+          cmake --build tests --target all
           cmake -S tests -B tests/build -D CMAKE_BUILD_TYPE=Debug
           cmake --build tests/build --target clean
           cmake --build tests/build --target all
@@ -110,4 +114,5 @@ jobs:
       - name: Run generator test
         run: |
           cd /root/chipyard
+          source env.sh
           python3 .github/scripts/run-generator-test.py "${{ matrix.test_name }}"
