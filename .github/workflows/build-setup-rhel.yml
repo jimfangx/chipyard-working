@@ -19,6 +19,7 @@ jobs:
       DOCKER_DATA_ROOT: ${{ github.workspace }}/.ci/docker
       FORCE_NON_EC2: 1
       JVM_OPTS: -Xmx3200m
+      RHEL_IMAGE: registry.redhat.io/container-native-virtualization/libguestfs-tools-rhel9:v4.16
       RHEL_CONDA_INSTALL_DIR: /workspace/.ci/rhel-conda
     steps:
       - name: Maximize build space
@@ -55,39 +56,62 @@ jobs:
             --env "CONDA_INSTALL_DIR=${RHEL_CONDA_INSTALL_DIR}" \
             --env "FORCE_NON_EC2=${FORCE_NON_EC2}" \
             --env "JVM_OPTS=${JVM_OPTS}" \
-            registry.access.redhat.com/ubi9/ubi:latest \
+            "${RHEL_IMAGE}" \
             bash -leo pipefail -c '
               dnf install -y \
                 bzip2 \
                 findutils \
                 git \
-                guestfs-tools \
                 gzip \
                 kmod \
                 make \
                 patch \
                 procps-ng \
                 python3 \
+                shadow-utils \
                 sudo \
                 tar \
                 unzip \
+                util-linux \
                 wget \
                 which \
                 xz
               command -v guestmount
               command -v guestunmount
 
-              git config --global --add safe.directory "*"
+              # Run build-setup as the mounted workspace owner so FireMarshal
+              # cannot use passwordless sudo and falls back to guestmount.
+              workspace_uid="$(stat -c %u /workspace)"
+              workspace_gid="$(stat -c %g /workspace)"
 
-              mkdir -p "$(dirname "${CONDA_INSTALL_DIR}")"
-              wget -O Miniforge3.sh "https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-$(uname)-$(uname -m).sh"
-              bash Miniforge3.sh -b -p "${CONDA_INSTALL_DIR}"
-              source "${CONDA_INSTALL_DIR}/etc/profile.d/conda.sh"
-              if [ -f "${CONDA_INSTALL_DIR}/etc/profile.d/mamba.sh" ]; then
-                source "${CONDA_INSTALL_DIR}/etc/profile.d/mamba.sh"
+              if ! getent group "${workspace_gid}" >/dev/null; then
+                groupadd -g "${workspace_gid}" chipyard-ci
               fi
-              conda activate
+              workspace_group="$(getent group "${workspace_gid}" | cut -d: -f1)"
 
-              ./build-setup.sh riscv-tools
-              grep -F "Setup complete!" build-setup.log
+              if ! getent passwd "${workspace_uid}" >/dev/null; then
+                useradd -m -u "${workspace_uid}" -g "${workspace_group}" chipyard-ci
+              fi
+              workspace_user="$(getent passwd "${workspace_uid}" | cut -d: -f1)"
+              workspace_home="$(getent passwd "${workspace_uid}" | cut -d: -f6)"
+
+              runuser -u "${workspace_user}" -- env \
+                "CONDA_INSTALL_DIR=${CONDA_INSTALL_DIR}" \
+                "FORCE_NON_EC2=${FORCE_NON_EC2}" \
+                "JVM_OPTS=${JVM_OPTS}" \
+                "HOME=${workspace_home}" \
+                bash -leo pipefail -c "
+                  cd /workspace
+                  git config --global --add safe.directory \"*\"
+                  mkdir -p \"\$(dirname \"\${CONDA_INSTALL_DIR}\")\"
+                  wget -O Miniforge3.sh \"https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-\$(uname)-\$(uname -m).sh\"
+                  bash Miniforge3.sh -b -p \"\${CONDA_INSTALL_DIR}\"
+                  source \"\${CONDA_INSTALL_DIR}/etc/profile.d/conda.sh\"
+                  if [ -f \"\${CONDA_INSTALL_DIR}/etc/profile.d/mamba.sh\" ]; then
+                    source \"\${CONDA_INSTALL_DIR}/etc/profile.d/mamba.sh\"
+                  fi
+                  conda activate
+                  ./build-setup.sh riscv-tools
+                  grep -F \"Setup complete!\" build-setup.log
+                "
             '

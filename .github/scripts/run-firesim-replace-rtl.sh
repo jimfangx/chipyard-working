@@ -77,9 +77,7 @@ checkout_pr_merge() {
 }
 
 prepare_firesim_environment() {
-  cd "${chipyard_dir}"
-  source_with_nounset_disabled env.sh
-  cd sims/firesim
+  cd "${chipyard_dir}/sims/firesim"
   source_with_nounset_disabled sourceme-manager.sh --skip-ssh-setup
 }
 
