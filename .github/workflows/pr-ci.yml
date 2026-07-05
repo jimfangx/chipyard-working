@@ -51,3 +51,12 @@ jobs:
     with:
       pr_number: ${{ github.event.pull_request.number }}
     secrets: inherit
+
+  run-firesim-tests:
+    name: run firesim tests
+    needs: check-ci-disable
+    if: ${{ needs.check-ci-disable.outputs.ci_disabled != 'true' }}
+    uses: ./.github/workflows/run-firesim-tests.yml
+    with:
+      pr_number: ${{ github.event.pull_request.number }}
+    secrets: inherit

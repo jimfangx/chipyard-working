@@ -81,4 +81,4 @@ jobs:
           tags: |
             ${{ steps.image.outputs.image_ref }}
           outputs: |
-            type=image,push=true,oci-mediatypes=true,compression=zstd,compression-level=6,force-compression=true
+            type=image,push=true,oci-mediatypes=true,compression=zstd,compression-level=8,force-compression=true

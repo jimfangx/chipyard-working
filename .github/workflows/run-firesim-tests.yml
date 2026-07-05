@@ -1,0 +1,115 @@
+name: run firesim tests
+
+on:
+  workflow_call:
+    inputs:
+      pr_number:
+        required: true
+        type: number
+
+permissions:
+  contents: read
+  packages: read
+
+defaults:
+  run:
+    shell: bash -leo pipefail {0}
+
+env:
+  FORCE_NON_EC2: 1
+  JVM_OPTS: -Xmx3200m
+
+jobs:
+  firesim-onprem-tests:
+    name: FireSim Golden Gate Compile + rvi-bmark-tests OnPrem
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+    env:
+      DOCKER_DATA_ROOT: ${{ github.workspace }}/.ci/docker
+    steps:
+      - name: Maximize build space
+        uses: jimfangx/maximize-build-space@master
+        with:
+          root-reserve-mb: 4096
+          swap-size-mb: 10240
+          remove-dotnet: 'true'
+          remove-android: 'true'
+          remove-haskell: 'true'
+          remove-codeql: 'true'
+
+      - name: Move Docker storage to workspace
+        run: |
+          sudo systemctl stop docker
+          sudo mkdir -p "${DOCKER_DATA_ROOT}"
+          printf '{ "data-root": "%s" }\n' "${DOCKER_DATA_ROOT}" | sudo tee /etc/docker/daemon.json
+          sudo systemctl start docker
+          docker info --format 'Docker root: {{ .DockerRootDir }}'
+
+      - name: Pull Chipyard container
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          image_name="ghcr.io/${GITHUB_REPOSITORY,,}:main"
+          echo "CHIPYARD_IMAGE=${image_name}" >> "${GITHUB_ENV}"
+          echo "${GITHUB_TOKEN}" | docker login ghcr.io -u "${GITHUB_ACTOR}" --password-stdin
+          docker pull "${image_name}"
+
+      - name: Run FireSim On-Prem tests
+        env:
+          PR_NUMBER: ${{ inputs.pr_number }}
+        run: |
+          docker run --rm \
+            --env "FORCE_NON_EC2=${FORCE_NON_EC2}" \
+            --env "JVM_OPTS=${JVM_OPTS}" \
+            --env "PR_NUMBER=${PR_NUMBER}" \
+            --env "GITHUB_SERVER_URL=${GITHUB_SERVER_URL}" \
+            --env "GITHUB_REPOSITORY=${GITHUB_REPOSITORY}" \
+            "${CHIPYARD_IMAGE}" \
+            bash -leo pipefail -c 'cd /root/chipyard && .github/scripts/run-firesim-replace-rtl.sh onprem "${PR_NUMBER}" /root/chipyard'
+
+  firesim-f2-tests:
+    name: FireSim Golden Gate Compile + rvi-bmark-tests AWS F2
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+    env:
+      DOCKER_DATA_ROOT: ${{ github.workspace }}/.ci/docker
+    steps:
+      - name: Maximize build space
+        uses: jimfangx/maximize-build-space@master
+        with:
+          root-reserve-mb: 4096
+          swap-size-mb: 10240
+          remove-dotnet: 'true'
+          remove-android: 'true'
+          remove-haskell: 'true'
+          remove-codeql: 'true'
+
+      - name: Move Docker storage to workspace
+        run: |
+          sudo systemctl stop docker
+          sudo mkdir -p "${DOCKER_DATA_ROOT}"
+          printf '{ "data-root": "%s" }\n' "${DOCKER_DATA_ROOT}" | sudo tee /etc/docker/daemon.json
+          sudo systemctl start docker
+          docker info --format 'Docker root: {{ .DockerRootDir }}'
+
+      - name: Pull Chipyard container
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          image_name="ghcr.io/${GITHUB_REPOSITORY,,}:main"
+          echo "CHIPYARD_IMAGE=${image_name}" >> "${GITHUB_ENV}"
+          echo "${GITHUB_TOKEN}" | docker login ghcr.io -u "${GITHUB_ACTOR}" --password-stdin
+          docker pull "${image_name}"
+
+      - name: Run FireSim AWS F2 tests
+        env:
+          PR_NUMBER: ${{ inputs.pr_number }}
+        run: |
+          docker run --rm \
+            --env "FORCE_NON_EC2=${FORCE_NON_EC2}" \
+            --env "JVM_OPTS=${JVM_OPTS}" \
+            --env "PR_NUMBER=${PR_NUMBER}" \
+            --env "GITHUB_SERVER_URL=${GITHUB_SERVER_URL}" \
+            --env "GITHUB_REPOSITORY=${GITHUB_REPOSITORY}" \
+            "${CHIPYARD_IMAGE}" \
+            bash -leo pipefail -c 'cd /root/chipyard && .github/scripts/run-firesim-replace-rtl.sh f2 "${PR_NUMBER}" /root/chipyard'

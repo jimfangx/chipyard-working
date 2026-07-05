@@ -63,6 +63,7 @@ jobs:
                 git \
                 gzip \
                 kmod \
+                libguestfs-tools-c \
                 make \
                 patch \
                 procps-ng \
@@ -73,6 +74,7 @@ jobs:
                 wget \
                 which \
                 xz
+              command -v guestmount
 
               git config --global --add safe.directory "*"
 
