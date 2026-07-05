@@ -19,7 +19,7 @@ jobs:
       DOCKER_DATA_ROOT: ${{ github.workspace }}/.ci/docker
       FORCE_NON_EC2: 1
       JVM_OPTS: -Xmx3200m
-      RHEL_IMAGE: registry.redhat.io/container-native-virtualization/libguestfs-tools-rhel9:v4.16
+      RHEL_IMAGE: registry.access.redhat.com/ubi9/ubi:latest
       RHEL_CONDA_INSTALL_DIR: /workspace/.ci/rhel-conda
     steps:
       - name: Maximize build space
@@ -76,6 +76,8 @@ jobs:
                 wget \
                 which \
                 xz
+              dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm
+              dnf install -y --setopt=install_weak_deps=False guestfs-tools
               command -v guestmount
               command -v guestunmount
 

@@ -64,8 +64,9 @@ jobs:
             --env "PR_NUMBER=${PR_NUMBER}" \
             --env "GITHUB_SERVER_URL=${GITHUB_SERVER_URL}" \
             --env "GITHUB_REPOSITORY=${GITHUB_REPOSITORY}" \
+            --entrypoint /bin/bash \
             "${CHIPYARD_IMAGE}" \
-            bash -leo pipefail -c 'cd /root/chipyard && .github/scripts/run-firesim-replace-rtl.sh onprem "${PR_NUMBER}" /root/chipyard'
+            -leo pipefail -c 'cd /root/chipyard && .github/scripts/run-firesim-tests.sh onprem "${PR_NUMBER}" /root/chipyard'
 
   firesim-f2-tests:
     name: FireSim Golden Gate Compile + rvi-bmark-tests AWS F2
@@ -111,5 +112,6 @@ jobs:
             --env "PR_NUMBER=${PR_NUMBER}" \
             --env "GITHUB_SERVER_URL=${GITHUB_SERVER_URL}" \
             --env "GITHUB_REPOSITORY=${GITHUB_REPOSITORY}" \
+            --entrypoint /bin/bash \
             "${CHIPYARD_IMAGE}" \
-            bash -leo pipefail -c 'cd /root/chipyard && .github/scripts/run-firesim-replace-rtl.sh f2 "${PR_NUMBER}" /root/chipyard'
+            -leo pipefail -c 'cd /root/chipyard && .github/scripts/run-firesim-tests.sh f2 "${PR_NUMBER}" /root/chipyard'

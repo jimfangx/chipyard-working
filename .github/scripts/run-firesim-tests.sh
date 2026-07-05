@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-suite="${1:?usage: run-firesim-replace-rtl.sh SUITE PR_NUMBER [CHIPYARD_DIR] [CONFIG_JSON]}"
-pr_number="${2:?usage: run-firesim-replace-rtl.sh SUITE PR_NUMBER [CHIPYARD_DIR] [CONFIG_JSON]}"
+suite="${1:?usage: run-firesim-tests.sh SUITE PR_NUMBER [CHIPYARD_DIR] [CONFIG_JSON]}"
+pr_number="${2:?usage: run-firesim-tests.sh SUITE PR_NUMBER [CHIPYARD_DIR] [CONFIG_JSON]}"
 chipyard_dir="${3:-/root/chipyard}"
 config_json="${4:-${chipyard_dir}/.github/workflows/config/firesim-tests.json}"
 
