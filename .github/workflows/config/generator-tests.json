@@ -106,7 +106,7 @@
   "chipyard-gemmini": [
     {
       "custom": true,
-      "string": "GEMMINI_SOFTWARE_DIR=$LOCAL_CHIPYARD_DIR/generators/gemmini/software/gemmini-rocc-tests && rm -rf $GEMMINI_SOFTWARE_DIR/riscv-tests && make run-binary-fast CONFIG=GemminiRocketConfig BINARY=$GEMMINI_SOFTWARE_DIR/build/bareMetalC/aligned-baremetal LOADMEM=1 && make run-binary-fast CONFIG=GemminiRocketConfig BINARY=$GEMMINI_SOFTWARE_DIR/build/bareMetalC/raw_hazard-baremetal LOADMEM=1 && make run-binary-fast CONFIG=GemminiRocketConfig BINARY=$GEMMINI_SOFTWARE_DIR/build/bareMetalC/mvin_mvout-baremetal LOADMEM=1"
+      "string": "GEMMINI_SOFTWARE_DIR=$LOCAL_CHIPYARD_DIR/generators/gemmini/software/gemmini-rocc-tests && rm -rf $GEMMINI_SOFTWARE_DIR/riscv-tests && (cd $GEMMINI_SOFTWARE_DIR && ./build.sh bareMetalC) && make run-binary-fast CONFIG=GemminiRocketConfig BINARY=$GEMMINI_SOFTWARE_DIR/build/bareMetalC/aligned-baremetal LOADMEM=1 && make run-binary-fast CONFIG=GemminiRocketConfig BINARY=$GEMMINI_SOFTWARE_DIR/build/bareMetalC/raw_hazard-baremetal LOADMEM=1 && make run-binary-fast CONFIG=GemminiRocketConfig BINARY=$GEMMINI_SOFTWARE_DIR/build/bareMetalC/mvin_mvout-baremetal LOADMEM=1"
     }
   ],
   "chipyard-mempress": [

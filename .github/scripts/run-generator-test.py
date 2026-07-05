@@ -7,13 +7,29 @@ import subprocess
 import sys
 
 
-def run_shell(command, chipyard_dir, sim_dir, env):
+class TestCommandFailed:
+    def __init__(self, label, command, returncode):
+        self.label = label
+        self.command = command
+        self.returncode = returncode
+
+
+def keep_going_for_test_suites(command):
+    if command.startswith("make run-asm-tests-fast") or command.startswith("make run-bmark-tests-fast"):
+        return command.replace("make ", "make -k ", 1)
+    return command
+
+
+def run_shell(command, chipyard_dir, sim_dir, env, label=None):
+    command = keep_going_for_test_suites(command)
+    label = label or command
     wrapped = (
         f'source "{chipyard_dir}/env.sh"\n'
         f'cd "{sim_dir}"\n'
         f'{command}'
     )
-    print("::group::" + command, flush=True)
+    print("::group::" + label, flush=True)
+    print(f"Running: {command}", flush=True)
     try:
         process = subprocess.Popen(
             ["bash", "-leo", "pipefail", "-c", wrapped],
@@ -28,18 +44,28 @@ def run_shell(command, chipyard_dir, sim_dir, env):
             print(line, end="", flush=True)
         returncode = process.wait()
         if returncode != 0:
-            raise subprocess.CalledProcessError(returncode, ["bash", "-leo", "pipefail", "-c", wrapped])
+            print(f"\nFAILED: {label}", flush=True)
+            print(f"Command: {command}", flush=True)
+            print(f"Exit code: {returncode}", flush=True)
+            print(
+                f"::error title=Generator test command failed::{label} failed with exit code {returncode}",
+                flush=True,
+            )
+            return TestCommandFailed(label, command, returncode)
+        return None
     finally:
         print("::endgroup::", flush=True)
 
 
 def run_entry(entry, chipyard_dir, sim_dir, env):
+    failures = []
+
     if entry.get("custom") is True:
         command = entry.get("string")
         if not command:
             raise ValueError("custom test entry must include a non-empty string")
-        run_shell(command, chipyard_dir, sim_dir, env)
-        return
+        failure = run_shell(command, chipyard_dir, sim_dir, env, label=f"custom command: {command}")
+        return [failure] if failure else []
 
     if entry.get("custom") is not False:
         raise ValueError("test entry must set custom to true or false")
@@ -57,12 +83,18 @@ def run_entry(entry, chipyard_dir, sim_dir, env):
 
     for config in configs:
         for binary in binaries:
-            run_shell(
+            label = f"CONFIG={config} BINARY={binary} LOADMEM=1"
+            failure = run_shell(
                 f"make run-binary CONFIG={config} BINARY={binary} LOADMEM=1",
                 chipyard_dir,
                 sim_dir,
                 env,
+                label=label,
             )
+            if failure:
+                failures.append(failure)
+
+    return failures
 
 
 def main():
@@ -96,8 +128,21 @@ def main():
         print(f"Test group {args.test_name} must be a non-empty list", file=sys.stderr)
         return 1
 
+    failures = []
     for entry in entries:
-        run_entry(entry, chipyard_dir, sim_dir, env)
+        failures.extend(run_entry(entry, chipyard_dir, sim_dir, env))
+
+    if failures:
+        print("\n::group::Generator test failure summary", flush=True)
+        print(f"Generator test failed: {args.test_name}", flush=True)
+        print(f"Failed command count: {len(failures)}", flush=True)
+        for index, failure in enumerate(failures, start=1):
+            print("", flush=True)
+            print(f"{index}. {failure.label}", flush=True)
+            print(f"   exit code: {failure.returncode}", flush=True)
+            print(f"   command: {failure.command}", flush=True)
+        print("::endgroup::", flush=True)
+        return 1
 
     print(f"Generator test complete: {args.test_name}")
     return 0
