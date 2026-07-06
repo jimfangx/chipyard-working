@@ -2,6 +2,10 @@ name: build-setup ubuntu
 
 on:
   workflow_call:
+    inputs:
+      pr_number:
+        required: true
+        type: number
 
 permissions:
   contents: read
@@ -30,8 +34,16 @@ jobs:
           remove-haskell: 'true'
           remove-codeql: 'true'
 
-      - name: Check out pull request
+      - name: Check out main
         uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Refresh pull request merge ref
+        run: |
+          git fetch --no-tags origin "pull/${{ inputs.pr_number }}/merge"
+          git checkout --detach FETCH_HEAD
+          git rev-parse --short HEAD
 
       - name: Install conda
         run: |

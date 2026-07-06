@@ -28,54 +28,6 @@ source_with_nounset_disabled() {
   fi
 }
 
-checkout_pr_merge() {
-  cd "${chipyard_dir}"
-  git config --global --add safe.directory "*" 2>/dev/null || true
-  git remote set-url origin "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}.git"
-
-  initialized_before="$(mktemp)"
-  submodules_after="$(mktemp)"
-  initialized_targets="$(mktemp)"
-  new_targets="$(mktemp)"
-  removed_targets="$(mktemp)"
-
-  git submodule status \
-    | awk 'substr($1, 1, 1) != "-" { print $2 }' \
-    | sort -u > "${initialized_before}"
-
-  git fetch --no-tags origin "pull/${pr_number}/merge"
-  git checkout --detach FETCH_HEAD
-
-  git config --file .gitmodules --get-regexp '^submodule\..*\.path$' \
-    | awk '{ print $2 }' \
-    | sort -u > "${submodules_after}"
-
-  comm -12 "${initialized_before}" "${submodules_after}" > "${initialized_targets}"
-  comm -13 "${initialized_before}" "${submodules_after}" > "${new_targets}"
-  comm -23 "${initialized_before}" "${submodules_after}" > "${removed_targets}"
-
-  while read -r submodule_path; do
-    [ -n "${submodule_path}" ] || continue
-    git submodule deinit --force -- "${submodule_path}" || true
-    rm -rf -- "${submodule_path}"
-  done < "${removed_targets}"
-
-  while read -r submodule_path; do
-    [ -n "${submodule_path}" ] || continue
-    git submodule sync -- "${submodule_path}"
-    git submodule update -- "${submodule_path}"
-  done < "${initialized_targets}"
-
-  while read -r submodule_path; do
-    [ -n "${submodule_path}" ] || continue
-    git submodule init -- "${submodule_path}"
-    git submodule sync -- "${submodule_path}"
-    git submodule update --init -- "${submodule_path}"
-  done < "${new_targets}"
-
-  git rev-parse --short HEAD
-}
-
 prepare_firesim_environment() {
   cd "${chipyard_dir}/sims/firesim"
   source_with_nounset_disabled sourceme-manager.sh --skip-ssh-setup
@@ -107,7 +59,6 @@ run_firesim_scala_test() {
   TEST_DISABLE_VCS=1 TEST_DISABLE_VIVADO=1 sbt "project firechip; testOnly firechip.chip.${test_class}"
 }
 
-checkout_pr_merge
 prepare_firesim_environment
 
 if [ "${suite}" = "f2" ]; then

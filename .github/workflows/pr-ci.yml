@@ -36,12 +36,16 @@ jobs:
     needs: check-ci-disable
     if: ${{ needs.check-ci-disable.outputs.ci_disabled != 'true' }}
     uses: ./.github/workflows/build-setup-ubuntu.yml
+    with:
+      pr_number: ${{ github.event.pull_request.number }}
 
   build-setup-rhel:
     name: build-setup rhel
     needs: check-ci-disable
     if: ${{ needs.check-ci-disable.outputs.ci_disabled != 'true' }}
     uses: ./.github/workflows/build-setup-rhel.yml
+    with:
+      pr_number: ${{ github.event.pull_request.number }}
 
   run-generator-tests:
     name: run generator tests
