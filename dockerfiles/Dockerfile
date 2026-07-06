@@ -28,8 +28,12 @@ RUN apt-get update && \
     findutils \
     git \
     gzip \
+    iputils-ping \
     kmod \
     make \
+    net-tools \
+    netcat-openbsd \
+    openssh-client \
     patch \
     procps \
     python3 \

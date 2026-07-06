@@ -6,6 +6,11 @@ pr_number="${2:?usage: run-firesim-tests.sh SUITE PR_NUMBER [CHIPYARD_DIR] [CONF
 chipyard_dir="${3:-/root/chipyard}"
 config_json="${4:-${chipyard_dir}/.github/workflows/config/firesim-tests.json}"
 
+echo "FireSim test suite: ${suite}"
+echo "FireSim test timeout: ${FIRESIM_TEST_TIMEOUT_SECONDS:-7200}s"
+echo "FireSim heartbeat interval: ${FIRESIM_HEARTBEAT_SECONDS:-60}s"
+echo "FireSim Java heap size: ${JAVA_HEAP_SIZE:-FireSim default}"
+
 source_with_nounset_disabled() {
   local script="$1"
   shift
