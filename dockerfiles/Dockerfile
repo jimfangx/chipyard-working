@@ -21,6 +21,7 @@ ENV PATH="${CONDA_INSTALL_DIR}/bin:${PATH}"
 RUN apt-get update && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
     bc \
+    build-essential \
     bzip2 \
     ca-certificates \
     curl \

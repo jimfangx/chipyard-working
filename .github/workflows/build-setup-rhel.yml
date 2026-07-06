@@ -128,6 +128,9 @@ jobs:
               workspace_user="$(getent passwd "${workspace_uid}" | cut -d: -f1)"
               workspace_home="$(getent passwd "${workspace_uid}" | cut -d: -f6)"
 
+              mkdir -p "$(dirname "${CONDA_INSTALL_DIR}")"
+              chown "${workspace_uid}:${workspace_gid}" "$(dirname "${CONDA_INSTALL_DIR}")"
+
               runuser -u "${workspace_user}" -- env \
                 "CONDA_INSTALL_DIR=${CONDA_INSTALL_DIR}" \
                 "FORCE_NON_EC2=${FORCE_NON_EC2}" \
