@@ -18,6 +18,8 @@ defaults:
 env:
   FORCE_NON_EC2: 1
   JVM_OPTS: -Xmx3200m
+  FIRESIM_TEST_TIMEOUT_SECONDS: 7200
+  FIRESIM_HEARTBEAT_SECONDS: 60
 
 jobs:
   firesim-onprem-tests:
@@ -61,6 +63,8 @@ jobs:
           docker run --rm -i \
             --env "FORCE_NON_EC2=${FORCE_NON_EC2}" \
             --env "JVM_OPTS=${JVM_OPTS}" \
+            --env "FIRESIM_TEST_TIMEOUT_SECONDS=${FIRESIM_TEST_TIMEOUT_SECONDS}" \
+            --env "FIRESIM_HEARTBEAT_SECONDS=${FIRESIM_HEARTBEAT_SECONDS}" \
             --env "PR_NUMBER=${PR_NUMBER}" \
             --env "GITHUB_SERVER_URL=${GITHUB_SERVER_URL}" \
             --env "GITHUB_REPOSITORY=${GITHUB_REPOSITORY}" \
@@ -166,6 +170,8 @@ jobs:
           docker run --rm -i \
             --env "FORCE_NON_EC2=${FORCE_NON_EC2}" \
             --env "JVM_OPTS=${JVM_OPTS}" \
+            --env "FIRESIM_TEST_TIMEOUT_SECONDS=${FIRESIM_TEST_TIMEOUT_SECONDS}" \
+            --env "FIRESIM_HEARTBEAT_SECONDS=${FIRESIM_HEARTBEAT_SECONDS}" \
             --env "PR_NUMBER=${PR_NUMBER}" \
             --env "GITHUB_SERVER_URL=${GITHUB_SERVER_URL}" \
             --env "GITHUB_REPOSITORY=${GITHUB_REPOSITORY}" \

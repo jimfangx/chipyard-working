@@ -40,8 +40,57 @@ prepare_f2_mgmt_tools() {
   bash ./mkall_fpga_mgmt_tools.sh
 }
 
+run_with_heartbeat() {
+  local timeout_seconds="${1:?timeout required}"
+  shift
+  local heartbeat_seconds="${FIRESIM_HEARTBEAT_SECONDS:-60}"
+  local command_display="$*"
+  local heartbeat_pid
+  local rc
+  local had_errexit=0
+
+  (
+    local elapsed=0
+    while true; do
+      sleep "${heartbeat_seconds}"
+      elapsed=$((elapsed + heartbeat_seconds))
+      printf '[%s] still running after %ss: %s\n' \
+        "$(date -u +'%Y-%m-%dT%H:%M:%SZ')" \
+        "${elapsed}" \
+        "${command_display}"
+    done
+  ) &
+  heartbeat_pid="$!"
+
+  case "$-" in
+    *e*)
+      had_errexit=1
+      set +e
+      ;;
+  esac
+
+  timeout --foreground --kill-after=60s "${timeout_seconds}s" "$@"
+  rc="$?"
+
+  kill "${heartbeat_pid}" 2>/dev/null || true
+  wait "${heartbeat_pid}" 2>/dev/null || true
+
+  if [ "${had_errexit}" -eq 1 ]; then
+    set -e
+  fi
+
+  if [ "${rc}" -eq 124 ]; then
+    echo "Timed out after ${timeout_seconds}s: ${command_display}" >&2
+  elif [ "${rc}" -eq 137 ]; then
+    echo "Timed out and was force-killed after ${timeout_seconds}s: ${command_display}" >&2
+  fi
+
+  return "${rc}"
+}
+
 run_firesim_scala_test() {
   local test_class="$1"
+  local timeout_seconds="${FIRESIM_TEST_TIMEOUT_SECONDS:-7200}"
 
   if ! [[ "${test_class}" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]]; then
     echo "Invalid FireSim Scala test class name: ${test_class}" >&2
@@ -56,7 +105,10 @@ run_firesim_scala_test() {
 
   cd "${chipyard_dir}"
   echo "========== FireSim Scala test: firechip.chip.${test_class} =========="
-  TEST_DISABLE_VCS=1 TEST_DISABLE_VIVADO=1 sbt "project firechip; testOnly firechip.chip.${test_class}"
+  run_with_heartbeat \
+    "${timeout_seconds}" \
+    env TEST_DISABLE_VCS=1 TEST_DISABLE_VIVADO=1 \
+    sbt "project firechip; testOnly firechip.chip.${test_class}"
 }
 
 prepare_firesim_environment
