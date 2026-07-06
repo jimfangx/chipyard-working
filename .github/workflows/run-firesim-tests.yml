@@ -22,6 +22,8 @@ env:
   FIRESIM_HEARTBEAT_SECONDS: 60
   # override: sims/firesim/sim/make/scala-build.mk:33
   FIRESIM_JAVA_HEAP_SIZE: 12G
+  # override: sims/firesim/sim/make/verilator.mk:8 -- -j4 = $(nproc) on github runners
+  FIRESIM_F2_VERILATOR_MAKEFLAGS: -j4 VM_PARALLEL_BUILDS=1
 
 jobs:
   firesim-onprem-tests:
@@ -174,6 +176,7 @@ jobs:
             --env "FORCE_NON_EC2=${FORCE_NON_EC2}" \
             --env "JVM_OPTS=${JVM_OPTS}" \
             --env "JAVA_HEAP_SIZE=${FIRESIM_JAVA_HEAP_SIZE}" \
+            --env "VERILATOR_MAKEFLAGS=${FIRESIM_F2_VERILATOR_MAKEFLAGS}" \
             --env "FIRESIM_TEST_TIMEOUT_SECONDS=${FIRESIM_TEST_TIMEOUT_SECONDS}" \
             --env "FIRESIM_HEARTBEAT_SECONDS=${FIRESIM_HEARTBEAT_SECONDS}" \
             --env "PR_NUMBER=${PR_NUMBER}" \

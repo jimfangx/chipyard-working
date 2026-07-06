@@ -34,6 +34,7 @@ RUN apt-get update && \
     net-tools \
     netcat-openbsd \
     openssh-client \
+    openssh-server \
     patch \
     procps \
     python3 \

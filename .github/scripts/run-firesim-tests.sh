@@ -10,6 +10,7 @@ echo "FireSim test suite: ${suite}"
 echo "FireSim test timeout: ${FIRESIM_TEST_TIMEOUT_SECONDS:-7200}s"
 echo "FireSim heartbeat interval: ${FIRESIM_HEARTBEAT_SECONDS:-60}s"
 echo "FireSim Java heap size: ${JAVA_HEAP_SIZE:-FireSim default}"
+echo "FireSim Verilator make flags: ${VERILATOR_MAKEFLAGS:-FireSim default}"
 
 source_with_nounset_disabled() {
   local script="$1"

@@ -69,4 +69,4 @@ SHUTTLE_VECTOR_VERILATOR_FLAGS = \
 
 # AJG: this must be evaluated after verilog generation to work (hence the =)
 EXTRA_VERILATOR_FLAGS = \
-	$(shell if grep -iq "module.*cva6" $(simulator_verilog); then echo "$(CVA6_VERILATOR_FLAGS)"; elif grep -iq "module.*gemmini" $(simulator_verilog); then echo "$(GEMMINI_VERILATOR_FLAGS)"; elif grep -Eiq "shuttle_tile.*vector_unit|vector_unit\.vu" $(simulator_verilog); then echo "$(SHUTTLE_VECTOR_VERILATOR_FLAGS)"; else echo "$(DEFAULT_MIDAS_VERILATOR_FLAGS)"; fi)
+	$(shell if grep -iq "module.*cva6" $(simulator_verilog); then echo "$(CVA6_VERILATOR_FLAGS)"; elif grep -iq "module.*gemmini" $(simulator_verilog); then echo "$(GEMMINI_VERILATOR_FLAGS)"; elif grep -iq "module.*shuttle.*vector" $(simulator_verilog); then echo "$(SHUTTLE_VECTOR_VERILATOR_FLAGS)"; else echo "$(DEFAULT_MIDAS_VERILATOR_FLAGS)"; fi)
