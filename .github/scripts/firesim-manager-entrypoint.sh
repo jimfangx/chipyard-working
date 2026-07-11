@@ -24,8 +24,21 @@ if [ ! -f "${VIVADO_PATH}" ]; then
   exit 1
 fi
 
+echo "Sourcing Vivado settings: ${VIVADO_PATH}"
+had_nounset=0
+case "$-" in
+  *u*)
+    had_nounset=1
+    set +u
+    ;;
+esac
+
 # shellcheck disable=SC1090
 source "${VIVADO_PATH}"
+
+if [ "${had_nounset}" -eq 1 ]; then
+  set -u
+fi
 
 if [ ! -s "${PUBLIC_KEY_PATH}" ]; then
   echo "Missing public key mounted at ${PUBLIC_KEY_PATH}." >&2
