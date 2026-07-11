@@ -29,7 +29,9 @@ set -euo pipefail
 # Set this to an AMI ID or public AMI name to pin the manager image. Leave
 # empty to resolve the current Ubuntu 24.04 amd64 EBS gp3 AMI from AWS SSM in
 # the selected region.
-manager_ami_id="${FIRESIM_MANAGER_AMI_ID:-1.19.2-prod-rhng4b6alkhdq}"
+
+# This is FPGA Dev AMI 1.19.2-prod-rhng4b6alkhdq
+manager_ami_id="${FIRESIM_MANAGER_AMI_ID:-ami-07a164f1a402ab274}"
 
 aws_region="${AWS_REGION:-${AWS_DEFAULT_REGION:-us-west-2}}"
 export AWS_DEFAULT_REGION="${aws_region}"
