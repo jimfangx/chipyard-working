@@ -37,6 +37,7 @@ if [ ! -x "${EC2_SETUP_SCRIPT}" ]; then
   echo "Missing executable EC2 setup script: ${EC2_SETUP_SCRIPT}" >&2
   exit 1
 fi
+export FORCE_NON_EC2=0
 "${EC2_SETUP_SCRIPT}"
 
 cd "${FS_DIR}"
@@ -55,7 +56,7 @@ if [ "${had_nounset}" -eq 1 ]; then
   set -u
 fi
 
-firesim managerinit --platform f2
+printf '\n' | firesim managerinit --platform f2
 
 python -m pip uninstall -y pyOpenSSL cryptography awscli botocore s3transfer urllib3
 python -m pip install --no-cache-dir --upgrade \

@@ -45,7 +45,7 @@ cd "$FDIR"
 
 # see if the instance info page exists. if not, we are not on ec2.
 # Skip EC2 setup if FORCE_NON_EC2 is set
-if [ "${FORCE_NON_EC2:-0}" != "1" ]; then
+if [ "${FORCE_NON_EC2:-0}" != "1" ]; then # todo(jimfang) remove this
     # see if the instance info page exists. if not, we are not on ec2.
     # rh: yet another HTTPS issue that needs to be fixed. i swear on god they use this for the most random things sometimes
     TOKEN=""

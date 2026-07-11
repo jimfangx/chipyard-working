@@ -497,8 +497,9 @@ docker_args=(
 
 if [ "${DETACH_CONTAINER}" = "1" ]; then
   docker rm -f firesim-manager >/dev/null 2>&1 || true
-  container_id="$(docker run -d --rm "${docker_args[@]}" "${IMAGE_REF}" bash /root/firesim-manager-entrypoint.sh)"
+  container_id="$(docker run -d "${docker_args[@]}" "${IMAGE_REF}" bash /root/firesim-manager-entrypoint.sh)"
   echo "Started detached FireSim manager container: ${container_id}"
+  echo "Inspect with: docker ps -a --filter name=firesim-manager && docker logs firesim-manager"
 else
   docker run --rm "${docker_args[@]}" "${IMAGE_REF}" bash /root/firesim-manager-entrypoint.sh
 fi
