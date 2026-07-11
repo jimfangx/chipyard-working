@@ -21,7 +21,7 @@ build_farm:
     #     - "222.222.2.222":
     #         override_build_dir: /scratch/specific-build-host-build-dir
     build_farm_hosts:
-        - {machine7}:
+        - {machine4}:
             override_build_dir: /tools/C/chipyard-cicd/machine7
 
 builds_to_run:
