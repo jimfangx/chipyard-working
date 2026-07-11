@@ -457,7 +457,10 @@ source /tmp/firesim-manager-runtime.env
 export IMAGE_REF GHCR_USERNAME GHCR_TOKEN DETACH_CONTAINER
 
 if command -v cloud-init >/dev/null 2>&1; then
-  sudo cloud-init status --wait
+  if ! sudo cloud-init status --wait; then
+    echo "cloud-init reported warnings/errors after reaching status; continuing provisioning." >&2
+    sudo cloud-init status --long || true
+  fi
 fi
 sudo apt-get update
 sudo DEBIAN_FRONTEND=noninteractive apt-get install -y awscli ca-certificates docker.io
