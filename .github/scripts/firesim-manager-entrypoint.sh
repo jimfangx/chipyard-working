@@ -13,6 +13,24 @@ BUILD_RECIPES="${FIRESIM_BUILD_RECIPES:-${CY_DIR}/sims/firesim-staging/sample_co
 BUILD_CONFIG="${FIRESIM_BUILD_CONFIG:-${CY_DIR}/.github/firesim-bitstream-templates/f2/config_build.yaml}"
 VIVADO_VERSION="${VIVADO_VERSION:-}"
 
+export LC_ALL="${LC_ALL:-en_US.UTF-8}"
+export LANG="${LANG:-en_US.UTF-8}"
+
+if ! ldconfig -p 2>/dev/null | grep -q 'libX11\.so\.6'; then
+  apt-get update
+  DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+    git-lfs \
+    locales \
+    libx11-6 \
+    libxext6 \
+    libxft2 \
+    libxi6 \
+    libxinerama1 \
+    libxrender1 \
+    libxtst6
+  locale-gen en_US.UTF-8
+fi
+
 if [ -n "${VIVADO_VERSION}" ]; then
   VIVADO_PATH="/opt/Xilinx/${VIVADO_VERSION}/Vivado/settings64.sh"
 else
