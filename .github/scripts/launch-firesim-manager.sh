@@ -463,7 +463,7 @@ if command -v cloud-init >/dev/null 2>&1; then
   fi
 fi
 sudo apt-get update
-sudo DEBIAN_FRONTEND=noninteractive apt-get install -y awscli ca-certificates docker.io
+sudo DEBIAN_FRONTEND=noninteractive apt-get install -y ca-certificates docker.io
 sudo systemctl enable --now docker
 sudo usermod -aG docker "${USER}"
 
