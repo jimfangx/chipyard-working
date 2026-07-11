@@ -11,6 +11,21 @@ PUBLIC_KEY_PATH="${FIRESIM_PUBLIC_KEY_PATH:-/root/firesim-public}"
 EC2_SETUP_SCRIPT="${FIRESIM_EC2_SETUP_SCRIPT:-${CY_DIR}/scripts/firesim-ec2-setup.sh}"
 BUILD_RECIPES="${FIRESIM_BUILD_RECIPES:-${CY_DIR}/sims/firesim-staging/sample_config_build_recipes.yaml}"
 BUILD_CONFIG="${FIRESIM_BUILD_CONFIG:-${CY_DIR}/.github/firesim-bitstream-templates/f2/config_build.yaml}"
+VIVADO_VERSION="${VIVADO_VERSION:-}"
+
+if [ -n "${VIVADO_VERSION}" ]; then
+  VIVADO_PATH="/opt/Xilinx/${VIVADO_VERSION}/Vivado/settings64.sh"
+else
+  VIVADO_PATH="$(find /opt/Xilinx -path '*/Vivado/settings64.sh' -type f 2>/dev/null | sort -V | tail -n 1)"
+fi
+
+if [ ! -f "${VIVADO_PATH}" ]; then
+  echo "Missing Vivado settings script. Set VIVADO_VERSION or mount /opt/Xilinx into the container." >&2
+  exit 1
+fi
+
+# shellcheck disable=SC1090
+source "${VIVADO_PATH}"
 
 if [ ! -s "${PUBLIC_KEY_PATH}" ]; then
   echo "Missing public key mounted at ${PUBLIC_KEY_PATH}." >&2

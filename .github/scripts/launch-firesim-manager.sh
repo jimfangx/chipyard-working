@@ -493,6 +493,7 @@ docker_args=(
   -v "${HOME}/firesim.pem:/root/firesim.pem:ro"
   -v "${HOME}/firesim-public:/root/firesim-public:ro"
   -v "${HOME}/firesim-manager-entrypoint.sh:/root/firesim-manager-entrypoint.sh:ro"
+  -v "/opt/Xilinx:/opt/Xilinx:ro"
 )
 
 if [ "${DETACH_CONTAINER}" = "1" ]; then
