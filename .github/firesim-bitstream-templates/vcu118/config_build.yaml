@@ -22,7 +22,7 @@ build_farm:
     #         override_build_dir: /scratch/specific-build-host-build-dir
     build_farm_hosts:
         - {machine4}:
-            override_build_dir: /tools/C/chipyard-cicd/machine7
+            override_build_dir: /tools/C/chipyard-cicd/machine4
 
 builds_to_run:
     # this section references builds defined in config_build_recipes.yaml
