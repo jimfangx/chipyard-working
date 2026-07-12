@@ -22,6 +22,7 @@ set -euo pipefail
 #   FIRESIM_MANAGER_KEY_NAME=chipyard-cicd
 #   FIRESIM_MANAGER_INSTANCE_TYPE=m6a.xlarge
 #   FIRESIM_MANAGER_AMI_ID=ami-... or public AMI name
+#   FIRESIM_MANAGER_VPC_NAME=chipyard-cicd
 #   FIRESIM_MANAGER_ROOT_VOLUME_GB=100
 #   FIRESIM_MANAGER_CONTAINER_SCRIPT=path/to/local/script.sh
 #   FIRESIM_MANAGER_DETACH_CONTAINER=1
@@ -40,14 +41,15 @@ managed_by="${FIRESIM_MANAGER_MANAGED_BY:-chipyard-cicd}"
 resource_prefix="${FIRESIM_MANAGER_RESOURCE_PREFIX:-chipyard-cicd-firesim}"
 key_name="${FIRESIM_MANAGER_KEY_NAME:-chipyard-cicd}"
 instance_type="${FIRESIM_MANAGER_INSTANCE_TYPE:-m6a.xlarge}"
-vpc_cidr="${FIRESIM_MANAGER_VPC_CIDR:-10.47.0.0/16}"
-subnet_cidr="${FIRESIM_MANAGER_SUBNET_CIDR:-10.47.1.0/24}"
+vpc_cidr="${FIRESIM_MANAGER_VPC_CIDR:-192.168.0.0/16}"
+subnet_cidr="${FIRESIM_MANAGER_SUBNET_CIDR:-192.168.1.0/24}"
 root_volume_gb="${FIRESIM_MANAGER_ROOT_VOLUME_GB:-170}"
 remote_user="${FIRESIM_MANAGER_REMOTE_USER:-ubuntu}"
 remote_region="${FIRESIM_AWS_REGION:-${aws_region}}"
 detach_container="${FIRESIM_MANAGER_DETACH_CONTAINER:-0}"
+firesim_build_security_group_name="${FIRESIM_AWS_SECURITY_GROUP_NAME:-chipyard-cicd-build-farm}"
 
-vpc_name="${resource_prefix}-vpc"
+vpc_name="${FIRESIM_MANAGER_VPC_NAME:-chipyard-cicd}"
 subnet_name="${resource_prefix}-subnet"
 igw_name="${resource_prefix}-igw"
 route_table_name="${resource_prefix}-rt"
@@ -112,7 +114,7 @@ ensure_ssh_cidr() {
 ensure_vpc() {
   local vpc_id
   vpc_id="$(aws_text_or_empty ec2 describe-vpcs \
-    --filters "Name=tag:Name,Values=${vpc_name}" "Name=tag:ManagedBy,Values=${managed_by}" \
+    --filters "Name=tag:Name,Values=${vpc_name}" \
     --query 'Vpcs[0].VpcId')"
 
   if [ -z "${vpc_id}" ]; then
@@ -155,7 +157,7 @@ ensure_internet_gateway() {
   local vpc_id="$1"
   local igw_id
   igw_id="$(aws_text_or_empty ec2 describe-internet-gateways \
-    --filters "Name=attachment.vpc-id,Values=${vpc_id}" "Name=tag:ManagedBy,Values=${managed_by}" \
+    --filters "Name=attachment.vpc-id,Values=${vpc_id}" \
     --query 'InternetGateways[0].InternetGatewayId')"
 
   if [ -z "${igw_id}" ]; then
@@ -393,6 +395,11 @@ write_runtime_env() {
     printf 'GHCR_USERNAME=%q\n' "${GHCR_USERNAME:-}"
     printf 'GHCR_TOKEN=%q\n' "${GHCR_TOKEN:-}"
     printf 'DETACH_CONTAINER=%q\n' "${detach_container}"
+    printf 'FIRESIM_AWS_VPC_NAME=%q\n' "${vpc_name}"
+    printf 'FIRESIM_AWS_KEY_NAME=%q\n' "${key_name}"
+    printf 'FIRESIM_AWS_SECURITY_GROUP_NAME=%q\n' "${firesim_build_security_group_name}"
+    printf 'FIRESIM_AWS_MANAGER_SECURITY_GROUP_NAME=%q\n' "${sg_name}"
+    printf 'FIRESIM_AWS_ALLOWED_CIDR=%q\n' "${vpc_cidr}"
   } > "${destination}"
 
   chmod 600 "${destination}"
@@ -455,6 +462,7 @@ set -euo pipefail
 
 source /tmp/firesim-manager-runtime.env
 export IMAGE_REF GHCR_USERNAME GHCR_TOKEN DETACH_CONTAINER
+export FIRESIM_AWS_VPC_NAME FIRESIM_AWS_KEY_NAME FIRESIM_AWS_SECURITY_GROUP_NAME FIRESIM_AWS_MANAGER_SECURITY_GROUP_NAME FIRESIM_AWS_ALLOWED_CIDR
 
 if command -v cloud-init >/dev/null 2>&1; then
   if ! sudo cloud-init status --wait; then
@@ -494,6 +502,11 @@ docker_args=(
   -v "${HOME}/firesim-public:/root/firesim-public:ro"
   -v "${HOME}/firesim-manager-entrypoint.sh:/root/firesim-manager-entrypoint.sh:ro"
   -v "/opt/Xilinx:/opt/Xilinx:ro"
+  -e "FIRESIM_AWS_VPC_NAME=${FIRESIM_AWS_VPC_NAME}"
+  -e "FIRESIM_AWS_KEY_NAME=${FIRESIM_AWS_KEY_NAME}"
+  -e "FIRESIM_AWS_SECURITY_GROUP_NAME=${FIRESIM_AWS_SECURITY_GROUP_NAME}"
+  -e "FIRESIM_AWS_MANAGER_SECURITY_GROUP_NAME=${FIRESIM_AWS_MANAGER_SECURITY_GROUP_NAME}"
+  -e "FIRESIM_AWS_ALLOWED_CIDR=${FIRESIM_AWS_ALLOWED_CIDR}"
 )
 
 if [ "${DETACH_CONTAINER}" = "1" ]; then
@@ -531,7 +544,6 @@ main() {
   prepare_key_files "${key_file}" "${public_key_file}"
   write_remote_aws_files "${aws_dir}"
   write_container_script "${container_script}"
-  write_runtime_env "${runtime_env}"
 
   echo "Ensuring FireSim manager network in ${aws_region}."
   local vpc_id
@@ -543,6 +555,8 @@ main() {
   igw_id="$(ensure_internet_gateway "${vpc_id}")"
   ensure_route_table "${vpc_id}" "${subnet_id}" "${igw_id}"
   security_group_id="$(ensure_security_group "${vpc_id}" "${ssh_cidr}")"
+  vpc_cidr="$(aws ec2 describe-vpcs --vpc-ids "${vpc_id}" --query 'Vpcs[0].CidrBlock' --output text)"
+  write_runtime_env "${runtime_env}"
 
   local ami_id
   ami_id="$(resolve_ami_id)"
