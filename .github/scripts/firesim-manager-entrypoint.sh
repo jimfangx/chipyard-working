@@ -226,6 +226,32 @@ path.write_text(text)
 print("Patched FireSim build-farm wait to require SSH/login-shell readiness.")
 PY
 
+grep -q 'FIRESIM_BUILD_HOST_SSH_READY_TIMEOUT_SECONDS' deploy/buildtools/buildfarm.py
+
+python - <<'PY'
+from pathlib import Path
+
+path = Path("deploy/firesim")
+text = path.read_text()
+needle = "    from fabric.api import local, hide, warn_only, env, execute, parallel # type: ignore\n"
+patch = (
+    needle
+    + "\n"
+    + 'env.user = os.environ.get("FIRESIM_BUILD_HOST_USER", "ubuntu")\n'
+    + 'env.key_filename = os.environ.get("FIRESIM_BUILD_HOST_KEY", os.path.expanduser("~/firesim.pem"))\n'
+)
+
+if patch in text:
+    pass
+elif needle in text:
+    text = text.replace(needle, patch, 1)
+else:
+    raise SystemExit("Could not find Fabric import in deploy/firesim")
+
+path.write_text(text)
+print("Configured Fabric build-host SSH user/key for FireSim.")
+PY
+
 had_nounset=0
 case "$-" in
   *u*)
