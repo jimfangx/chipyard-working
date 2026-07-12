@@ -147,6 +147,85 @@ print(
 )
 PY
 
+python - <<'PY'
+from pathlib import Path
+
+path = Path("deploy/buildtools/buildfarm.py")
+text = path.read_text()
+
+if "import subprocess\n" not in text:
+    text = text.replace("import os\n", "import os\nimport subprocess\nimport time\n", 1)
+
+old = """        wait_on_instance_launches([build_host.launched_instance_object])
+        build_host.ip_address = build_host.launched_instance_object.private_ip_address
+"""
+new = """        wait_on_instance_launches([build_host.launched_instance_object])
+        build_host.launched_instance_object.reload()
+        build_host.ip_address = build_host.launched_instance_object.private_ip_address
+
+        ready_timeout_seconds = int(os.environ.get("FIRESIM_BUILD_HOST_SSH_READY_TIMEOUT_SECONDS", "600"))
+        deadline = time.time() + ready_timeout_seconds
+        ssh_target = f"ubuntu@{build_host.ip_address}"
+        readiness_cmd = (
+            "cloud-init status --wait >/dev/null 2>&1 || true; "
+            f"/bin/bash -l -c 'mkdir -p {build_host.dest_build_dir}/platforms/f2/'"
+        )
+        ssh_cmd = [
+            "ssh",
+            "-i",
+            os.path.expanduser("~/firesim.pem"),
+            "-o",
+            "BatchMode=yes",
+            "-o",
+            "StrictHostKeyChecking=no",
+            "-o",
+            "UserKnownHostsFile=/dev/null",
+            "-o",
+            "ConnectTimeout=10",
+            ssh_target,
+            readiness_cmd,
+        ]
+
+        last_stdout = ""
+        last_stderr = ""
+        last_returncode = None
+        while time.time() < deadline:
+            completed = subprocess.run(
+                ssh_cmd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+            )
+            if completed.returncode == 0:
+                rootLogger.info(f"Build host {build_host.ip_address} is SSH-ready.")
+                return
+
+            last_stdout = completed.stdout
+            last_stderr = completed.stderr
+            last_returncode = completed.returncode
+            rootLogger.info(
+                f"Waiting for build host {build_host.ip_address} SSH readiness; "
+                f"rc={completed.returncode}"
+            )
+            time.sleep(10)
+
+        rootLogger.critical(
+            f"Timed out after {ready_timeout_seconds}s waiting for build host "
+            f"{build_host.ip_address} SSH readiness. Last rc={last_returncode}. "
+            f"stdout={last_stdout!r} stderr={last_stderr!r}"
+        )
+        raise RuntimeError(f"Build host {build_host.ip_address} did not become SSH-ready")
+"""
+
+if old in text:
+    text = text.replace(old, new, 1)
+elif "FIRESIM_BUILD_HOST_SSH_READY_TIMEOUT_SECONDS" not in text:
+    raise SystemExit("Could not find expected FireSim build-host wait block")
+
+path.write_text(text)
+print("Patched FireSim build-farm wait to require SSH/login-shell readiness.")
+PY
+
 had_nounset=0
 case "$-" in
   *u*)
