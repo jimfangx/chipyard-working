@@ -1,6 +1,25 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+KEEP_CONTAINER_ON_ERROR="${KEEP_CONTAINER_ON_ERROR:-1}"
+
+keep_container_on_error() {
+  local rc="$?"
+  if [ "${rc}" -ne 0 ] && [ "${KEEP_CONTAINER_ON_ERROR}" = "1" ]; then
+    echo "Entrypoint failed with exit code ${rc}; keeping container alive for debugging." >&2
+    echo "Inspect with: docker exec -it firesim-manager bash" >&2
+    sleep infinity
+  fi
+}
+
+exit_immediately() {
+  trap - EXIT
+  exit 143
+}
+
+trap keep_container_on_error EXIT
+trap exit_immediately INT TERM
+
 export USER=root
 export LOGNAME=root
 export HOME=/root

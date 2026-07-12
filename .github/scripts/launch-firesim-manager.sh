@@ -47,6 +47,7 @@ root_volume_gb="${FIRESIM_MANAGER_ROOT_VOLUME_GB:-170}"
 remote_user="${FIRESIM_MANAGER_REMOTE_USER:-ubuntu}"
 remote_region="${FIRESIM_AWS_REGION:-${aws_region}}"
 detach_container="${FIRESIM_MANAGER_DETACH_CONTAINER:-0}"
+keep_container_on_error="${FIRESIM_MANAGER_KEEP_CONTAINER_ON_ERROR:-1}"
 firesim_build_security_group_name="${FIRESIM_AWS_SECURITY_GROUP_NAME:-chipyard-cicd-build-farm}"
 
 vpc_name="${FIRESIM_MANAGER_VPC_NAME:-chipyard-cicd}"
@@ -395,6 +396,7 @@ write_runtime_env() {
     printf 'GHCR_USERNAME=%q\n' "${GHCR_USERNAME:-}"
     printf 'GHCR_TOKEN=%q\n' "${GHCR_TOKEN:-}"
     printf 'DETACH_CONTAINER=%q\n' "${detach_container}"
+    printf 'KEEP_CONTAINER_ON_ERROR=%q\n' "${keep_container_on_error}"
     printf 'FIRESIM_AWS_VPC_NAME=%q\n' "${vpc_name}"
     printf 'FIRESIM_AWS_KEY_NAME=%q\n' "${key_name}"
     printf 'FIRESIM_AWS_SECURITY_GROUP_NAME=%q\n' "${firesim_build_security_group_name}"
@@ -462,6 +464,7 @@ set -euo pipefail
 
 source /tmp/firesim-manager-runtime.env
 export IMAGE_REF GHCR_USERNAME GHCR_TOKEN DETACH_CONTAINER
+export KEEP_CONTAINER_ON_ERROR
 export FIRESIM_AWS_VPC_NAME FIRESIM_AWS_KEY_NAME FIRESIM_AWS_SECURITY_GROUP_NAME FIRESIM_AWS_MANAGER_SECURITY_GROUP_NAME FIRESIM_AWS_ALLOWED_CIDR
 
 if command -v cloud-init >/dev/null 2>&1; then
@@ -507,6 +510,7 @@ docker_args=(
   -e "FIRESIM_AWS_SECURITY_GROUP_NAME=${FIRESIM_AWS_SECURITY_GROUP_NAME}"
   -e "FIRESIM_AWS_MANAGER_SECURITY_GROUP_NAME=${FIRESIM_AWS_MANAGER_SECURITY_GROUP_NAME}"
   -e "FIRESIM_AWS_ALLOWED_CIDR=${FIRESIM_AWS_ALLOWED_CIDR}"
+  -e "KEEP_CONTAINER_ON_ERROR=${KEEP_CONTAINER_ON_ERROR}"
 )
 
 if [ "${DETACH_CONTAINER}" = "1" ]; then
