@@ -48,12 +48,8 @@ RUN apt-get update && \
     wget && \
     rm -rf /var/lib/apt/lists/*
 
-RUN if ! id -u ubuntu >/dev/null 2>&1; then \
-        useradd -m -s /bin/bash ubuntu; \
-    fi && \
-    usermod -aG sudo ubuntu && \
-    echo "ubuntu ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/ubuntu && \
-    chmod 0440 /etc/sudoers.d/ubuntu && \
+RUN usermod -l ubuntu -d /home/ubuntu -m root && \
+    groupmod -n ubuntu root && \
     mkdir -p /home/ubuntu && \
     chown ubuntu:ubuntu "$(dirname "${CONDA_INSTALL_DIR}")" /home/ubuntu
 
