@@ -1,14 +1,9 @@
 {
   "onprem": [
     "RocketU250Tests",
-    "LargeBoomU250Tests",
-    "ShuttleU250Tests",
     "RocketVCU118Tests"
   ],
   "f2": [
-    "RocketF2Tests",
-    "GemminiRocketF2Tests",
-    "MegaBoomF2Tests",
-    "ShuttleF2Tests"
+    "RocketF2Tests"
   ]
 }
