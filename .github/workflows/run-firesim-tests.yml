@@ -23,7 +23,7 @@ env:
   # override: sims/firesim/sim/make/scala-build.mk:33
   FIRESIM_JAVA_HEAP_SIZE: 12G
   # override: sims/firesim/sim/make/verilator.mk:8 -- F2 Gemmini generated C++ is memory-heavy on GitHub runners
-  FIRESIM_F2_VERILATOR_MAKEFLAGS: -j2 VM_PARALLEL_BUILDS=1
+  FIRESIM_F2_VERILATOR_MAKEFLAGS: -j1 VM_PARALLEL_BUILDS=1
 
 jobs:
   firesim-onprem-tests:
