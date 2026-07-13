@@ -8,7 +8,7 @@ FROM ubuntu:24.04 AS base
 ARG CHIPYARD_REPO=https://github.com/ucb-bar/chipyard.git
 ARG CHIPYARD_REF=main
 
-MAINTAINER https://groups.google.com/forum/#!forum/chipyard
+LABEL maintainer="https://groups.google.com/forum/#!forum/chipyard"
 
 SHELL ["/bin/bash", "-leo", "pipefail", "-c"]
 
@@ -54,8 +54,8 @@ RUN if ! id -u ubuntu >/dev/null 2>&1; then \
     usermod -aG sudo ubuntu && \
     echo "ubuntu ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/ubuntu && \
     chmod 0440 /etc/sudoers.d/ubuntu && \
-    mkdir -p "${CONDA_INSTALL_DIR}" /home/ubuntu && \
-    chown -R ubuntu:ubuntu "${CONDA_INSTALL_DIR}" /home/ubuntu
+    mkdir -p /home/ubuntu && \
+    chown ubuntu:ubuntu "$(dirname "${CONDA_INSTALL_DIR}")" /home/ubuntu
 
 USER ubuntu
 WORKDIR /home/ubuntu
