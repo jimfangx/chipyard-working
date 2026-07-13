@@ -17,9 +17,11 @@ npm ci
 npm run dev
 ```
 
-The active environment must include the Python/Sphinx dependencies and Node.js
-from `../conda-reqs/docs.yaml`, because the Starlight build starts by rendering
-the RST source with Sphinx.
+The active environment must include the Python/Sphinx dependencies from
+`../conda-reqs/docs.yaml`, because the Starlight build starts by rendering the
+RST source with Sphinx. Node.js is provided separately: Read the Docs installs
+it via `.readthedocs.yml`, and local development can use an activated conda env,
+system Node, or another Node installation on `PATH`.
 
 Build static docs:
 
