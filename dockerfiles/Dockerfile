@@ -48,10 +48,13 @@ RUN apt-get update && \
     wget && \
     rm -rf /var/lib/apt/lists/*
 
-RUN usermod -l ubuntu -d /home/ubuntu -m root && \
-    groupmod -n ubuntu root && \
+RUN if id -u ubuntu >/dev/null 2>&1; then \
+        usermod -o -u 0 -g 0 -d /home/ubuntu -s /bin/bash ubuntu; \
+    else \
+        useradd -o -u 0 -g 0 -d /home/ubuntu -s /bin/bash ubuntu; \
+    fi && \
     mkdir -p /home/ubuntu && \
-    chown ubuntu:ubuntu "$(dirname "${CONDA_INSTALL_DIR}")" /home/ubuntu
+    chown ubuntu:root "$(dirname "${CONDA_INSTALL_DIR}")" /home/ubuntu
 
 USER ubuntu
 WORKDIR /home/ubuntu
