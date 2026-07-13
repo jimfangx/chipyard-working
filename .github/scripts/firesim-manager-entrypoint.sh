@@ -99,7 +99,7 @@ chmod 600 "${HOME}/.ssh/authorized_keys"
 grep -qxFf "${PUBLIC_KEY_PATH}" "${HOME}/.ssh/authorized_keys" || cat "${PUBLIC_KEY_PATH}" >> "${HOME}/.ssh/authorized_keys"
 
 sudo tee -a /etc/ssh/sshd_config >/dev/null <<'EOF'
-PermitRootLogin no
+PermitRootLogin prohibit-password
 PubkeyAuthentication yes
 PasswordAuthentication no
 EOF
