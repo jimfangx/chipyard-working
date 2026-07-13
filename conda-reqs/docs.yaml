@@ -22,3 +22,4 @@ dependencies:
     - sphinx-autobuild
     - sphinx_rtd_theme
     - docutils
+    - nodejs=22

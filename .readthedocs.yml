@@ -4,11 +4,13 @@ build:
     os: ubuntu-24.04
     tools:
         python: "miniforge3-26.3"
+        nodejs: "22"
     jobs:
         build:
             html:
                 - cd docs && npm ci
-                - cd docs && npm run build
+                - cd docs && conda run --name "$READTHEDOCS_VERSION" python scripts/sphinx_to_starlight.py
+                - cd docs && npm run build:astro
                 - mkdir -p $READTHEDOCS_OUTPUT/html
                 - cp -r docs/dist/* $READTHEDOCS_OUTPUT/html/
 
