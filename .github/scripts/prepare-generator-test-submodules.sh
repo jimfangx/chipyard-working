@@ -2,7 +2,7 @@
 set -euo pipefail
 
 test_name="${1:?usage: prepare-generator-test-submodules.sh TEST_NAME [CHIPYARD_DIR] [TESTS_JSON]}"
-chipyard_dir="${2:-/root/chipyard}"
+chipyard_dir="${2:-/home/ubuntu/chipyard}"
 tests_json="${3:-${chipyard_dir}/.github/workflows/config/generator-tests.json}"
 
 is_empty_dir() {

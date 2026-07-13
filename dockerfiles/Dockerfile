@@ -14,8 +14,11 @@ SHELL ["/bin/bash", "-leo", "pipefail", "-c"]
 
 ENV CONDA_INSTALL_DIR=/opt/conda
 ENV FORCE_NON_EC2=1
+ENV HOME=/home/ubuntu
 ENV JVM_OPTS=-Xmx3200m
+ENV LOGNAME=ubuntu
 ENV PATH="${CONDA_INSTALL_DIR}/bin:${PATH}"
+ENV USER=ubuntu
 
 # Install host dependencies needed to clone Chipyard and bootstrap conda.
 RUN apt-get update && \
@@ -45,7 +48,17 @@ RUN apt-get update && \
     wget && \
     rm -rf /var/lib/apt/lists/*
 
-WORKDIR /root
+RUN if ! id -u ubuntu >/dev/null 2>&1; then \
+        useradd -m -s /bin/bash ubuntu; \
+    fi && \
+    usermod -aG sudo ubuntu && \
+    echo "ubuntu ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/ubuntu && \
+    chmod 0440 /etc/sudoers.d/ubuntu && \
+    mkdir -p "${CONDA_INSTALL_DIR}" /home/ubuntu && \
+    chown -R ubuntu:ubuntu "${CONDA_INSTALL_DIR}" /home/ubuntu
+
+USER ubuntu
+WORKDIR /home/ubuntu
 
 # Clone Chipyard. CHIPYARD_REF can be a branch, tag, commit SHA, PR number, or refs/pull/... ref.
 RUN git clone "${CHIPYARD_REPO}" chipyard && \
@@ -91,7 +104,7 @@ RUN cd chipyard && \
 RUN cd chipyard && \
     source "${CONDA_INSTALL_DIR}/etc/profile.d/conda.sh" && \
     conda activate && \
-    source /root/chipyard/env.sh && \
+    source /home/ubuntu/chipyard/env.sh && \
     ./build-setup.sh riscv-tools \
       -s 1 -s 2 -s 5 -s 6 -s 7 -s 8 -s 9 -s 10 -s 11
 
@@ -99,7 +112,7 @@ RUN cd chipyard && \
 RUN cd chipyard && \
     source "${CONDA_INSTALL_DIR}/etc/profile.d/conda.sh" && \
     conda activate && \
-    source /root/chipyard/env.sh && \
+    source /home/ubuntu/chipyard/env.sh && \
     ./build-setup.sh riscv-tools \
       -s 1 -s 2 -s 3 -s 4 -s 6 -s 7 -s 8 -s 9 -s 10 -s 11
 
@@ -107,7 +120,7 @@ RUN cd chipyard && \
 RUN cd chipyard && \
     source "${CONDA_INSTALL_DIR}/etc/profile.d/conda.sh" && \
     conda activate && \
-    source /root/chipyard/env.sh && \
+    source /home/ubuntu/chipyard/env.sh && \
     ./build-setup.sh riscv-tools \
       -s 1 -s 2 -s 3 -s 4 -s 5 -s 9 -s 10 -s 11
 
@@ -115,7 +128,7 @@ RUN cd chipyard && \
 RUN --security=insecure cd chipyard && \
     source "${CONDA_INSTALL_DIR}/etc/profile.d/conda.sh" && \
     conda activate && \
-    source /root/chipyard/env.sh && \
+    source /home/ubuntu/chipyard/env.sh && \
     ./build-setup.sh riscv-tools \
       -s 1 -s 2 -s 3 -s 4 -s 5 -s 6 -s 7 -s 8 -s 10 -s 11
 
@@ -123,7 +136,7 @@ RUN --security=insecure cd chipyard && \
 RUN cd chipyard && \
     source "${CONDA_INSTALL_DIR}/etc/profile.d/conda.sh" && \
     conda activate && \
-    source /root/chipyard/env.sh && \
+    source /home/ubuntu/chipyard/env.sh && \
     ./build-setup.sh riscv-tools \
       -s 1 -s 2 -s 3 -s 4 -s 5 -s 6 -s 7 -s 8 -s 9 -s 11
 
@@ -131,7 +144,7 @@ RUN cd chipyard && \
 RUN cd chipyard && \
     source "${CONDA_INSTALL_DIR}/etc/profile.d/conda.sh" && \
     conda activate && \
-    source /root/chipyard/env.sh && \
+    source /home/ubuntu/chipyard/env.sh && \
     ./build-setup.sh riscv-tools \
       -s 1 -s 2 -s 3 -s 4 -s 5 -s 6 -s 7 -s 8 -s 9 -s 10 && \
     grep -F "Setup complete!" build-setup.log

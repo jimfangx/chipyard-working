@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-chipyard_dir="${LOCAL_CHIPYARD_DIR:-/root/chipyard}"
+chipyard_dir="${LOCAL_CHIPYARD_DIR:-/home/ubuntu/chipyard}"
 zephyr_dir="${chipyard_dir}/software/zephyrproject/zephyr"
 
 if [ -z "${RISCV:-}" ]; then

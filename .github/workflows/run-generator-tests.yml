@@ -87,7 +87,7 @@ jobs:
             --env "GITHUB_REPOSITORY=${GITHUB_REPOSITORY}" \
             "${CHIPYARD_IMAGE}" \
             bash -leo pipefail <<'CONTAINER_SCRIPT'
-          cd /root/chipyard
+          cd /home/ubuntu/chipyard
           git config --global --add safe.directory "*"
           git remote set-url origin "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}.git"
 
@@ -144,7 +144,7 @@ jobs:
           git rev-parse --short HEAD
 
           # Initialize only additional submodules needed by this generator test.
-          bash .github/scripts/prepare-generator-test-submodules.sh "${TEST_NAME}" /root/chipyard
+          bash .github/scripts/prepare-generator-test-submodules.sh "${TEST_NAME}" /home/ubuntu/chipyard
 
           # Build tests in both tests/ and tests/build due to legacy paths.
           source env.sh

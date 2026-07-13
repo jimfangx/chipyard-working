@@ -3,7 +3,7 @@ set -euo pipefail
 
 suite="${1:?usage: run-firesim-tests.sh SUITE PR_NUMBER [CHIPYARD_DIR] [CONFIG_JSON]}"
 pr_number="${2:?usage: run-firesim-tests.sh SUITE PR_NUMBER [CHIPYARD_DIR] [CONFIG_JSON]}"
-chipyard_dir="${3:-/root/chipyard}"
+chipyard_dir="${3:-/home/ubuntu/chipyard}"
 config_json="${4:-${chipyard_dir}/.github/workflows/config/firesim-tests.json}"
 
 echo "FireSim test suite: ${suite}"

@@ -102,9 +102,9 @@ def main():
     parser.add_argument("test_name")
     parser.add_argument(
         "--tests-json",
-        default="/root/chipyard/.github/workflows/config/generator-tests.json",
+        default="/home/ubuntu/chipyard/.github/workflows/config/generator-tests.json",
     )
-    parser.add_argument("--chipyard-dir", default="/root/chipyard")
+    parser.add_argument("--chipyard-dir", default="/home/ubuntu/chipyard")
     args = parser.parse_args()
 
     chipyard_dir = os.path.abspath(args.chipyard_dir)

@@ -485,9 +485,6 @@ sudo install -m 600 -o "${USER}" -g "${USER}" /tmp/firesim.pem "${HOME}/firesim.
 sudo install -m 644 -o "${USER}" -g "${USER}" /tmp/firesim-public "${HOME}/firesim-public"
 sudo install -m 755 -o "${USER}" -g "${USER}" /tmp/firesim-manager-entrypoint.sh "${HOME}/firesim-manager-entrypoint.sh"
 
-sudo install -m 700 -o "${USER}" -g "${USER}" -d /ubuntu
-sudo install -m 600 -o "${USER}" -g "${USER}" /tmp/firesim.pem /ubuntu/firesim.pem
-sudo install -m 644 -o "${USER}" -g "${USER}" /tmp/firesim-public /ubuntu/firesim-public
 rm -f /tmp/credentials /tmp/config /tmp/firesim.pem /tmp/firesim-public /tmp/firesim-manager-entrypoint.sh /tmp/firesim-manager-runtime.env
 
 newgrp docker <<'DOCKER_GROUP'
@@ -500,10 +497,10 @@ docker pull "${IMAGE_REF}"
 docker_args=(
   --name firesim-manager
   --add-host=host.docker.internal:host-gateway
-  -v "${HOME}/.aws:/root/.aws:ro"
-  -v "${HOME}/firesim.pem:/root/firesim.pem:ro"
-  -v "${HOME}/firesim-public:/root/firesim-public:ro"
-  -v "${HOME}/firesim-manager-entrypoint.sh:/root/firesim-manager-entrypoint.sh:ro"
+  -v "${HOME}/.aws:/home/ubuntu/.aws:ro"
+  -v "${HOME}/firesim.pem:/home/ubuntu/firesim.pem:ro"
+  -v "${HOME}/firesim-public:/home/ubuntu/firesim-public:ro"
+  -v "${HOME}/firesim-manager-entrypoint.sh:/home/ubuntu/firesim-manager-entrypoint.sh:ro"
   -v "/opt/Xilinx:/opt/Xilinx:ro"
   -e "FIRESIM_AWS_VPC_NAME=${FIRESIM_AWS_VPC_NAME}"
   -e "FIRESIM_AWS_KEY_NAME=${FIRESIM_AWS_KEY_NAME}"
@@ -515,11 +512,11 @@ docker_args=(
 
 if [ "${DETACH_CONTAINER}" = "1" ]; then
   docker rm -f firesim-manager >/dev/null 2>&1 || true
-  container_id="$(docker run -d "${docker_args[@]}" "${IMAGE_REF}" bash /root/firesim-manager-entrypoint.sh)"
+  container_id="$(docker run -d "${docker_args[@]}" "${IMAGE_REF}" bash /home/ubuntu/firesim-manager-entrypoint.sh)"
   echo "Started detached FireSim manager container: ${container_id}"
   echo "Inspect with: docker ps -a --filter name=firesim-manager && docker logs firesim-manager"
 else
-  docker run --rm "${docker_args[@]}" "${IMAGE_REF}" bash /root/firesim-manager-entrypoint.sh
+  docker run --rm "${docker_args[@]}" "${IMAGE_REF}" bash /home/ubuntu/firesim-manager-entrypoint.sh
 fi
 DOCKER_GROUP
 REMOTE

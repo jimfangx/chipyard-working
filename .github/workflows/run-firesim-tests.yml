@@ -76,7 +76,7 @@ jobs:
             --entrypoint /bin/bash \
             "${CHIPYARD_IMAGE}" \
             -leo pipefail <<'CONTAINER_SCRIPT'
-          cd /root/chipyard
+          cd /home/ubuntu/chipyard
           git config --global --add safe.directory "*"
           git remote set-url origin "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}.git"
 
@@ -131,7 +131,7 @@ jobs:
           done < "${new_targets}"
 
           git rev-parse --short HEAD
-          .github/scripts/run-firesim-tests.sh onprem "${PR_NUMBER}" /root/chipyard
+          .github/scripts/run-firesim-tests.sh onprem "${PR_NUMBER}" /home/ubuntu/chipyard
           CONTAINER_SCRIPT
 
   firesim-f2-tests:
@@ -185,7 +185,7 @@ jobs:
             --entrypoint /bin/bash \
             "${CHIPYARD_IMAGE}" \
             -leo pipefail <<'CONTAINER_SCRIPT'
-          cd /root/chipyard
+          cd /home/ubuntu/chipyard
           git config --global --add safe.directory "*"
           git remote set-url origin "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}.git"
 
@@ -240,5 +240,5 @@ jobs:
           done < "${new_targets}"
 
           git rev-parse --short HEAD
-          .github/scripts/run-firesim-tests.sh f2 "${PR_NUMBER}" /root/chipyard
+          .github/scripts/run-firesim-tests.sh f2 "${PR_NUMBER}" /home/ubuntu/chipyard
           CONTAINER_SCRIPT
