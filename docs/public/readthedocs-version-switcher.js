@@ -81,12 +81,17 @@
 
     let mounted = false;
     for (const [id, target] of targets) {
-      if (!target || target.querySelector(`[data-rtd-version-select="${id}"]`)) continue;
+      if (!target) continue;
 
       const selector = createVersionSelector(data, id);
       if (!selector) continue;
 
-      target.prepend(selector);
+      const existing = target.querySelector(`[data-rtd-version-select="${id}"]`);
+      if (existing) {
+        existing.replaceWith(selector);
+      } else {
+        target.prepend(selector);
+      }
       mounted = true;
     }
     return mounted;
@@ -100,7 +105,78 @@
   function tryMountVersionSelector(event) {
     const data = getReadTheDocsData(event);
     if (!data) return false;
-    return mountVersionSelector(data);
+    const mounted = mountVersionSelector(data);
+    mountCanonicalVersionSelector(data);
+    return mounted;
+  }
+
+  function getProjectSlug(data) {
+    const meta = document.querySelector('meta[name="readthedocs-project-slug"]');
+    return (meta && meta.content) || (data && data.projects && data.projects.current && data.projects.current.slug);
+  }
+
+  function getVersionSlugs(data) {
+    const versions = data && data.versions && Array.isArray(data.versions.active) ? data.versions.active : [];
+    return new Set(versions.map(function (version) {
+      return version.slug;
+    }));
+  }
+
+  function hasNewerVersionList(currentData, candidateData) {
+    const currentSlugs = getVersionSlugs(currentData);
+    const candidateSlugs = getVersionSlugs(candidateData);
+    if (candidateSlugs.size <= currentSlugs.size) return false;
+
+    for (const slug of candidateSlugs) {
+      if (!currentSlugs.has(slug)) return true;
+    }
+    return false;
+  }
+
+  function mergeVersionList(currentData, candidateData) {
+    return {
+      ...currentData,
+      versions: {
+        ...currentData.versions,
+        active: candidateData.versions.active,
+        current: currentData.versions.current,
+      },
+    };
+  }
+
+  async function fetchAddonsData(projectSlug, versionSlug) {
+    const params = new URLSearchParams({
+      'client-version': '0.50.0',
+      'api-version': '1',
+      'project-slug': projectSlug,
+      'version-slug': versionSlug,
+    });
+    const response = await fetch(`/_/addons/?${params.toString()}`, {
+      credentials: 'same-origin',
+      cache: 'no-store',
+    });
+    if (!response.ok) return undefined;
+    return response.json();
+  }
+
+  async function mountCanonicalVersionSelector(data) {
+    const projectSlug = getProjectSlug(data);
+    const currentSlug = data && data.versions && data.versions.current && data.versions.current.slug;
+    if (!projectSlug) return;
+
+    for (const versionSlug of ['stable', 'latest']) {
+      if (versionSlug === currentSlug) continue;
+
+      try {
+        const candidate = await fetchAddonsData(projectSlug, versionSlug);
+        if (candidate && hasNewerVersionList(data, candidate)) {
+          mountVersionSelector(mergeVersionList(data, candidate));
+          return;
+        }
+      } catch {
+        // Keep the RTD-provided selector if the canonical metadata request fails.
+      }
+    }
   }
 
   function retryMountVersionSelector(remaining) {
