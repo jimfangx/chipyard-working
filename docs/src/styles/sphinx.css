@@ -115,6 +115,15 @@
   font-size: var(--sl-text-sm);
 }
 
+.mobile-preferences .rtd-version-select {
+  width: 100%;
+  margin: 0;
+}
+
+.mobile-preferences .rtd-version-select select {
+  width: 100%;
+}
+
 .rtd-version-select select:focus {
   outline: 2px solid var(--sl-color-accent);
   outline-offset: 2px;

@@ -34,13 +34,14 @@
     return `${normalizedBase}${normalizedSuffix}`;
   }
 
-  function addVersionSelector(data) {
+  function createVersionSelector(data, id) {
     const versions = data && data.versions && Array.isArray(data.versions.active) ? data.versions.active : [];
     const current = data && data.versions && data.versions.current;
-    if (!current || versions.length < 2 || document.querySelector('.rtd-version-select')) return;
+    if (!current || versions.length < 2) return undefined;
 
     const label = document.createElement('label');
     label.className = 'rtd-version-select';
+    label.dataset.rtdVersionSelect = id;
     label.title = 'Select documentation version';
 
     const text = document.createElement('span');
@@ -69,16 +70,53 @@
     });
 
     label.append(select);
-
-    const headerControls = document.querySelector('.right-group') || document.querySelector('.header .sl-flex.print\\:hidden');
-    if (!headerControls) return;
-
-    headerControls.prepend(label);
+    return label;
   }
 
-  document.addEventListener('readthedocs-addons-data-ready', function (event) {
-    const detail = event.detail;
-    const data = detail && typeof detail.data === 'function' ? detail.data() : undefined;
-    addVersionSelector(data);
-  });
+  function mountVersionSelector(data) {
+    const targets = [
+      ['desktop', document.querySelector('.right-group')],
+      ['mobile', document.querySelector('.mobile-preferences')],
+    ];
+
+    let mounted = false;
+    for (const [id, target] of targets) {
+      if (!target || target.querySelector(`[data-rtd-version-select="${id}"]`)) continue;
+
+      const selector = createVersionSelector(data, id);
+      if (!selector) continue;
+
+      target.prepend(selector);
+      mounted = true;
+    }
+    return mounted;
+  }
+
+  function getReadTheDocsData(event) {
+    const source = event && event.detail ? event.detail : window.ReadTheDocsEventData;
+    return source && typeof source.data === 'function' ? source.data() : undefined;
+  }
+
+  function tryMountVersionSelector(event) {
+    const data = getReadTheDocsData(event);
+    if (!data) return false;
+    return mountVersionSelector(data);
+  }
+
+  function retryMountVersionSelector(remaining) {
+    if (tryMountVersionSelector() || remaining <= 0) return;
+    window.setTimeout(function () {
+      retryMountVersionSelector(remaining - 1);
+    }, 250);
+  }
+
+  document.addEventListener('readthedocs-addons-data-ready', tryMountVersionSelector);
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function () {
+      retryMountVersionSelector(20);
+    });
+  } else {
+    retryMountVersionSelector(20);
+  }
 })();
