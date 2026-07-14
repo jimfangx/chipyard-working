@@ -17,6 +17,10 @@ npm ci
 npm run dev
 ```
 
+`npm run dev` starts a docs watcher and Astro. When an RST file or related
+Sphinx source changes, the watcher reruns `scripts/sphinx_to_starlight.py`;
+Astro serves the regenerated Starlight content without restarting.
+
 The active environment must include the Python/Sphinx dependencies from either
 `requirements.txt` or `../conda-reqs/docs.yaml`, because the Starlight build
 starts by rendering the RST source with Sphinx. Read the Docs installs

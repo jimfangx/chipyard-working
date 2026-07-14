@@ -4,8 +4,8 @@
   "type": "module",
   "scripts": {
     "sync": "python scripts/sphinx_to_starlight.py",
-    "predev": "npm run sync",
-    "dev": "ASTRO_TELEMETRY_DISABLED=1 astro dev --host 0.0.0.0",
+    "dev": "node scripts/dev.mjs",
+    "dev:astro": "ASTRO_TELEMETRY_DISABLED=1 astro dev --host 0.0.0.0",
     "prebuild": "npm run sync",
     "build": "ASTRO_TELEMETRY_DISABLED=1 astro build",
     "build:astro": "ASTRO_TELEMETRY_DISABLED=1 astro build",
@@ -15,5 +15,7 @@
     "@astrojs/starlight": "0.41.3",
     "astro": "7.0.7"
   },
-  "devDependencies": {}
+  "devDependencies": {
+    "chokidar": "5.0.0"
+  }
 }
