@@ -1,3 +1,7 @@
+a {
+  text-decoration: none;
+}
+
 .sphinx-page {
   font-size: var(--sl-text-base);
   line-height: 1.7;
@@ -11,11 +15,6 @@
 .sphinx-page h1 {
   font-size: var(--sl-text-4xl);
   line-height: 1.15;
-}
-
-.sphinx-page h2 {
-  border-top: 1px solid var(--sl-color-gray-5);
-  padding-top: 1.5rem;
 }
 
 .sphinx-page .headerlink {
@@ -49,7 +48,7 @@
   vertical-align: top;
 }
 
-.sphinx-page pre {
+.sphinx-page pre:not([data-language]) {
   overflow-x: auto;
   border: 1px solid var(--sl-color-gray-5);
   border-radius: 0.35rem;
@@ -57,7 +56,30 @@
   background: var(--sl-color-gray-6);
 }
 
-.sphinx-page code,
+.sphinx-page .expressive-code .frame pre[data-language] {
+  position: relative;
+}
+
+.sphinx-page .expressive-code .frame pre[data-language]::before {
+  content: attr(data-language);
+  position: absolute;
+  inset-block-start: 0.65rem;
+  inset-inline-start: var(--ec-codePadInl);
+  z-index: 1;
+  color: var(--sl-color-gray-3);
+  font-family: var(--__sl-font);
+  font-size: var(--sl-text-2xs);
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  pointer-events: none;
+}
+
+.sphinx-page .expressive-code .frame pre[data-language] > code {
+  padding-block-start: calc(var(--ec-codePadBlk) + 1rem);
+}
+
 .sphinx-page .docutils.literal {
   font-size: 0.9em;
 }

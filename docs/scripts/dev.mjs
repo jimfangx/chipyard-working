@@ -14,6 +14,7 @@ const excludedTopLevel = new Set(['.astro', '_build', 'dist', 'node_modules', 'p
 let astro;
 let syncing = false;
 let pendingSync = false;
+let restarting = false;
 let stopping = false;
 let debounce;
 const astroBin = path.join(docsRoot, 'node_modules', '.bin', 'astro');
@@ -83,26 +84,45 @@ async function sync() {
 }
 
 function startAstro() {
-  astro = spawn(astroBin, ['dev', '--host', '0.0.0.0', ...astroArgs], {
+  const child = spawn(astroBin, ['dev', '--host', '0.0.0.0', ...astroArgs], {
     cwd: docsRoot,
     env: { ...process.env, ASTRO_TELEMETRY_DISABLED: '1' },
     stdio: 'inherit',
   });
-  astro.on('exit', (code) => {
-    if (!stopping && code !== 0) process.exit(code ?? 1);
+  astro = child;
+  child.on('exit', (code) => {
+    if (astro === child) astro = undefined;
+    if (!stopping && !restarting && code !== 0) process.exit(code ?? 1);
   });
 }
 
-async function stopAstro() {
-  if (astro && astro.exitCode === null) {
+async function stopAstroProcess() {
+  const child = astro;
+  if (child && child.exitCode === null) {
     await new Promise((resolve) => {
-      astro.once('exit', resolve);
-      astro.kill('SIGTERM');
+      child.once('exit', resolve);
+      child.kill('SIGTERM');
       setTimeout(() => {
-        if (astro && astro.exitCode === null) astro.kill('SIGKILL');
+        if (child.exitCode === null) child.kill('SIGKILL');
       }, 5000).unref();
     });
   }
+  if (astro === child) astro = undefined;
+}
+
+async function restartAstro() {
+  restarting = true;
+  try {
+    await stopAstroProcess();
+    await runAllowingFailure(astroBin, ['dev', 'stop']);
+    startAstro();
+  } finally {
+    restarting = false;
+  }
+}
+
+async function stopAstro() {
+  await stopAstroProcess();
   await runAllowingFailure(astroBin, ['dev', 'stop']);
 }
 
@@ -117,6 +137,9 @@ async function regenerateContent() {
     console.log('[docs-dev] Regenerating Starlight content');
     try {
       await sync();
+      // Generated docs are ignored build artifacts, so Astro's content watcher
+      // can retain stale pages when the converter rewrites them.
+      await restartAstro();
     } catch (error) {
       console.error(`[docs-dev] ${error.message}`);
     }
