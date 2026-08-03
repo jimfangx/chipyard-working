@@ -73,6 +73,10 @@ technology.sky130:
   # this key is OPTIONAL, no NDA files will be used if it does not point to a valid path
   sky130_nda: "/path/to/skywater-src-nda"
 
+  drc_blackbox_srams: true
+
+  stdcell_library: "sky130_scl"
+
 # SRAM Compiler compiler options
 vlsi.core.sram_generator_tool: "hammer.technology.sky130.sram_compiler"
 
@@ -177,3 +181,4 @@ vlsi.inputs.pin.generate_mode: semi_auto
 vlsi.inputs.pin.assignments: [
   {pins: "*", layers: ["met2", "met4"], side: "bottom"}
 ]
+

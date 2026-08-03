@@ -1,0 +1,46 @@
+#!/usr/bin/env python3
+
+from hammer.vlsi import CLIDriver, HammerTool, HammerDriver, HammerToolHookAction
+from hammer.utils import get_or_else, optional_map
+import hammer.tech as hammer_tech
+
+from pathlib import Path
+from typing import Dict, Callable, Optional, List
+
+from hammer.technology.sky130 import SKY130Tech
+
+import json
+
+CHIPTOP_DONT_TOUCH_NETS = ["_commonIO_AMUXBUS_A_wire", "_commonIO_AMUXBUS_B_wire"]
+# ================ SYNTHESIS HOOOKS ===============
+def check_timing_intent(x: HammerTool) -> bool:
+    x.append('check_timing_intent -verbose')
+    return True
+
+# dont optimize out hard macros (ex: level shifter)
+def dont_touch(x: HammerTool) -> bool:
+    x.append('set_dont_touch [get_db insts -if {.base_cell.base_class == block}]')
+    return True
+
+def donttouch_iocells(x: HammerTool) -> bool:
+    x.append('set_dont_touch [get_db insts -if {.base_cell.name == sky130_ef_io__*}] true')
+    return True
+
+def chiptop_dont_touch(x: HammerTool) -> bool:
+    x.append("set_dont_touch [get_nets {%s}] true" % " ".join(CHIPTOP_DONT_TOUCH_NETS))
+    return True
+
+class Driver(CLIDriver):
+    def get_extra_synthesis_hooks(self) -> List[HammerToolHookAction]:
+        return [
+            HammerTool.make_post_insertion_hook("init_environment", check_timing_intent),
+            HammerTool.make_post_insertion_hook("init_environment", dont_touch),
+            HammerTool.make_post_insertion_hook("init_environment", donttouch_iocells),
+            # HammerTool.make_pre_insertion_hook("syn_generic", flatten_analog_driver),
+            HammerTool.make_pre_insertion_hook("syn_generic", chiptop_dont_touch),
+        ]
+
+
+
+if __name__ == '__main__':
+    Driver().main()

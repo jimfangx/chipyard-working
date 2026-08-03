@@ -168,6 +168,12 @@ trait IOCellTypeParams {
   def gpio():   DigitalGPIOCell
   def input():  DigitalInIOCell
   def output(): DigitalOutIOCell
+
+  /** Override these hooks when a process needs to choose a cell using the signal
+    * name or bit index. The default preserves the existing IOCellTypeParams API.
+    */
+  def inputForBit(name: Option[String], index: Int): DigitalInIOCell = input()
+  def outputForBit(name: Option[String], index: Int): DigitalOutIOCell = output()
 }
 
 case class GenericIOCellParams() extends IOCellTypeParams {
@@ -223,7 +229,7 @@ object IOCell {
     ): Seq[IOCell] = {
       DataMirror.directionOf(coreSignal) match {
         case ActualDirection.Input => {
-          val iocell = typeParams.input()
+          val iocell = typeParams.inputForBit(name, 0)
           name.foreach(n => {
             iocell.suggestName(n)
           })
@@ -233,7 +239,7 @@ object IOCell {
           Seq(iocell)
         }
         case ActualDirection.Output => {
-          val iocell = typeParams.output()
+          val iocell = typeParams.outputForBit(name, 0)
           name.foreach(n => {
             iocell.suggestName(n)
           })
@@ -280,7 +286,7 @@ object IOCell {
           DataMirror.directionOf(coreSignal) match {
             case ActualDirection.Input => {
               val iocells = padSignal.asBools.zipWithIndex.map { case (sig, i) =>
-                val iocell = typeParams.input()
+                val iocell = typeParams.inputForBit(name, i)
                 // Note that we are relying on chisel deterministically naming this in the index order (which it does)
                 // This has the side-effect of naming index 0 with no _0 suffix, which is how chisel names other signals
                 // An alternative solution would be to suggestName(n + "_" + i)
@@ -297,7 +303,7 @@ object IOCell {
             }
             case ActualDirection.Output => {
               val iocells = coreSignal.asBools.zipWithIndex.map { case (sig, i) =>
-                val iocell = typeParams.output()
+                val iocell = typeParams.outputForBit(name, i)
                 // Note that we are relying on chisel deterministically naming this in the index order (which it does)
                 // This has the side-effect of naming index 0 with no _0 suffix, which is how chisel names other signals
                 // An alternative solution would be to suggestName(n + "_" + i)
