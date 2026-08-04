@@ -1,13 +1,13 @@
 # EDA Tooling Setup
 # Genus options
 vlsi.core.synthesis_tool: "hammer.synthesis.genus"
-synthesis.genus.version: "211"
-synthesis.genus.genus_bin: "/tools/cadence/GENUS/GENUS211/bin/genus"
+synthesis.genus.version: "231_ISR4"
+synthesis.genus.genus_bin: "/tools/cadence/DDI/DDI231_ISR4/bin/genus"
 
 # Innovus options
 vlsi.core.par_tool: "hammer.par.innovus"
-par.innovus.version: "211"
-par.innovus.innovus_bin: "/tools/cadence/INNOVUS/INNOVUS211/bin/innovus"
+par.innovus.version: "231"
+par.innovus.innovus_bin: "/tools/cadence/DDI/DDI231_ISR4/bin/innovus"
 par.innovus.design_flow_effort: "standard"
 par.inputs.gds_merge: true
 # Pegaus options, cadence pdk only has a pegasus deck
@@ -54,15 +54,16 @@ vlsi.core.technology: "hammer.technology.sky130"
 # Adjust this based on your tooling license & compute environment
 vlsi.core.max_threads: 32
 
+technology.core.stackup: "sky130_scl"
+
 # Technology paths
 technology.sky130:
-  # sky130A: "/path/to/sky130A" # jim - commented out for now
+  sky130A: "/scratch/jfx/open-pdks/sky130/sky130A" # TODO(jimfang) bump to tools
 
   # Cadence SkyWater 130nm PDK Path
   sky130_cds: "/tools/commercial/skywater/sky130_cds/PDK/sky130_release_0.0.9"
   # Cadence SkyWater 130nm Standard Cell Library Path
   sky130_scl: "/tools/commercial/skywater/sky130_cds/LIB/sky130_scl_9T_0.1.2" # TODO(jimfang) - change before prod
-  sky130_io_periphery_cells: "/scratch/jfx/skywater-pdk-libs-sky130_fd_io" # amd 5 scratch for now
   sram22_sky130_macros: "/scratch/jfx/sram22_sky130_macros" # amd 5 scratch for now
 
   # todo(jimfang) can be removed?
@@ -76,6 +77,8 @@ technology.sky130:
   drc_blackbox_srams: true
 
   stdcell_library: "sky130_scl"
+
+  caravel: "/scratch/jfx/caravel"
 
 # SRAM Compiler compiler options
 vlsi.core.sram_generator_tool: "hammer.technology.sky130.sram_compiler"
@@ -91,8 +94,6 @@ par.generate_power_straps_options:
   by_tracks:
     generate_rail_layer: false # sky130_scl has a hook for rails
     strap_layers:
-      - met2
-      - met3
       - met4
       - met5
     pin_layers:
@@ -182,3 +183,88 @@ vlsi.inputs.pin.assignments: [
   {pins: "*", layers: ["met2", "met4"], side: "bottom"}
 ]
 
+vlsi.inputs.dont_use_mode: append
+vlsi.inputs.dont_use_list_meta: append
+vlsi.inputs.dont_use_list:
+  - sky130_fd_sc_hvl__*
+
+# ====================================================================
+# Sky130 IO Cell Collat
+
+.local.library.sky130_fd_sc_hvl__lsbufhv2lv: &lib__sky130_fd_sc_hvl__lsbufhv2lv
+  # gds_file: ${technology.sky130.sky130A}/libs.ref/sky130_fd_sc_hvl/gds/sky130_fd_sc_hvl.gds
+  gds_file: ${technology.sky130.sky130A}/libs.ref/sky130_fd_sc_hvl/gds/sky130_fd_sc_hvl.gds
+  lef_file: cache/fd_sc_hvl__lef/sky130_fd_sc_hvl__lsbufhv2lv_1.lef
+  spice_file: ${technology.sky130.sky130A}/libs.ref/sky130_fd_sc_hvl/cdl/sky130_fd_sc_hvl.cdl
+  verilog_sim: ${technology.sky130.sky130A}/libs.ref/sky130_fd_sc_hvl/verilog/sky130_fd_sc_hvl.v
+  provides:
+    - lib_type: lvlshift
+      vt: RVT
+
+vlsi.technology.extra_libraries_meta: ["append", "lazydeepsubst"]
+vlsi.technology.extra_libraries:
+  # - library:
+  #     spice_file: /tools/C/rahulkumar/sky130/stac2/lvs/devices.sp
+  # lvs required rahul's devices.sp which maps the sky130a primitive names to the extraction deck primitive names -- jim: this should only be needed for calibre, which we are not using - see https://ucb-bar.slack.com/archives/C04BT3QEW4C/p1738516994635699?thread_ts=1738308068.017219&cid=C04BT3QEW4C
+  
+  # default plugin should include this now...
+  # - library:
+  #     spice_file: /scratch/jfx/open-pdks/sky130/sky130A/libs.ref/sky130_fd_io/spice/sky130_fd_io.spice
+  # - library:
+      # https://ucb-bar.slack.com/archives/C04BT3QEW4C/p1730980809217149 - `special_nshort` has since been removed from upstream
+      # TODO(jimfang) wait; default plugin should include this now...
+      # spice_file: ${technology.sky130.sky130A}/libs.ref/sky130_fd_sc_hd/cdl/sky130_fd_sc_hd.cdl
+  - library:
+      <<: *lib__sky130_fd_sc_hvl__lsbufhv2lv
+      nldm_liberty_file: ${technology.sky130.sky130A}/libs.ref/sky130_fd_sc_hvl/lib/sky130_fd_sc_hvl__ss_100C_1v65_lv1v60.lib
+      corner:
+        nmos: "slow"
+        pmos: "slow"
+        temperature: "100 C"
+      supplies:
+        VDD: "1.60 V"
+        GND: "0 V"
+  - library:
+      <<: *lib__sky130_fd_sc_hvl__lsbufhv2lv
+      nldm_liberty_file: ${technology.sky130.sky130A}/libs.ref/sky130_fd_sc_hvl/lib/sky130_fd_sc_hvl__ff_n40C_5v50_lv1v95_ccsnoise.lib
+      corner:
+        nmos: "fast"
+        pmos: "fast"
+        temperature: "-40 C"
+      supplies:
+        VDD: "1.95 V"
+        GND: "0 V"
+  - library:
+      <<: *lib__sky130_fd_sc_hvl__lsbufhv2lv
+      nldm_liberty_file: ${technology.sky130.sky130A}/libs.ref/sky130_fd_sc_hvl/lib/sky130_fd_sc_hvl__tt_025C_3v30_lv1v80.lib
+      corner:
+        nmos: "typical"
+        pmos: "typical"
+        temperature: "025 C"
+      supplies:
+        VDD: "1.80 V"
+        GND: "0 V"
+# TODO(jimfang) UNSURE if still needed or fixed upstream
+  # - library:
+  #     gds_file: /tools/C/rohankumar/sky130/stac_tapeout/gds/sky130_ef_io_with_overlay.gds
+  #     lef_file: ${technology.sky130.sky130A}/libs.ref/sky130_fd_io/lef/sky130_ef_io.lef
+  #     spice_file: /tools/C/rahulkumar/sky130/io_lvs/sky130_ef_io.spice
+  # - library:
+  #     gds_file: /tools/C/rohankumar/sky130/stac_tapeout/gds/sky130_ef_io__connect_vcchib_vccd_and_vswitch_vddio_and_vssio_vssa_vssd_slice_20um.gds
+  #     lef_file: /tools/C/rohankumar/sky130/stac_tapeout/gds/sky130_ef_io__connect_vcchib_vccd_and_vswitch_vddio_and_vssio_vssa_vssd_slice_20um.lef
+  #     spice_file: /tools/C/rahulkumar/sky130/io_lvs/sky130_ef_io.spice
+  # - library:
+  #     gds_file: /tools/C/rohankumar/sky130/stac_tapeout/gds/sky130_ef_io__analog_pad_esd2.gds
+  #     lef_file: /tools/C/rohankumar/sky130/stac_tapeout/sky130_ef_io__analog_pad_esd2.lef
+  #     spice_file: /tools/C/rahulkumar/sky130/io_lvs/sky130_ef_io__analog_pad_esd2.cdl
+  #     provides:
+  #       - lib_type: iocell
+# TODO(jimfang) we should just redistribute simple_por from caravel, its the only collat from them we use & making folks clone caravel is confusing (makes peopl think we re using caravel when we're not)
+  - library:
+      gds_file: ${technology.sky130.caravel}/gds/simple_por.gds
+      lef_file: ${technology.sky130.caravel}/lef/simple_por.lef
+      spice_file: ${technology.sky130.caravel}/spi/lvs/simple_por_combined.spice
+      verilog_sim: ${technology.sky130.caravel}/verilog/rtl/simple_por.v
+      provides:
+        - lib_type: por
+          vt: RVT
