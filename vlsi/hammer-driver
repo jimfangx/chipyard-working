@@ -10,9 +10,40 @@ from typing import Dict, Callable, Optional, List
 from hammer.technology.sky130 import SKY130Tech
 
 import json
+import yaml
+
+CHIPTOP_IO_PIN_MAP_PATH = Path(__file__).resolve().parent / "example-sky130-pin-map.yaml"
+PERSISTENT_CHIPTOP_IO_NETS = ("VDDIO", "VDD", "VDDA", "VSS") # from nets surfaced in the power plan - see sky130.cpf
+
+
+def load_chiptop_io_nets(pin_map_path: Path = CHIPTOP_IO_PIN_MAP_PATH) -> List[str]:
+    with pin_map_path.open("r") as f:
+        pin_map = yaml.safe_load(f)
+
+    if not isinstance(pin_map, dict) or not isinstance(pin_map.get("pins"), dict):
+        raise ValueError(f"{pin_map_path} must contain a 'pins' mapping")
+
+    chiptop_io_nets = list(pin_map["pins"].values())
+    if not all(isinstance(net, str) for net in chiptop_io_nets):
+        raise ValueError(f"All pin-map values in {pin_map_path} must be net names")
+
+    return chiptop_io_nets + [
+        net for net in PERSISTENT_CHIPTOP_IO_NETS if net not in chiptop_io_nets
+    ]
+
+
+CHIPTOP_IO_NETS = load_chiptop_io_nets()
 
 CHIPTOP_DONT_TOUCH_NETS = ["_commonIO_AMUXBUS_A_wire", "_commonIO_AMUXBUS_B_wire"]
 # ================ SYNTHESIS HOOOKS ===============
+
+# TODO(jimfang) unused for now, does this break things?
+def syn_design_effort(x: HammerTool) -> bool:
+    x.append("""
+    set_db syn_global_effort high
+    """)
+    return True
+
 def check_timing_intent(x: HammerTool) -> bool:
     x.append('check_timing_intent -verbose')
     return True
@@ -26,8 +57,1514 @@ def donttouch_iocells(x: HammerTool) -> bool:
     x.append('set_dont_touch [get_db insts -if {.base_cell.name == sky130_ef_io__*}] true')
     return True
 
+def flatten_analog_driver(x: HammerTool) -> bool:
+    # AnalogDriver is a kludge to get FIRRTL to understand how to connect nets
+    # together, they should get dissolved
+    x.append('ungroup [get_db hinsts -if {.module.name == AnalogDriver*}]')
+    return True
+
 def chiptop_dont_touch(x: HammerTool) -> bool:
     x.append("set_dont_touch [get_nets {%s}] true" % " ".join(CHIPTOP_DONT_TOUCH_NETS))
+    return True
+
+# ============== PAR HOOKS =============
+
+def set_routing_layers(x: HammerTool) -> bool:
+    # cadence std cells use met1 for pins
+    x.append("""
+set_db design_bottom_routing_layer met2
+set_db design_top_routing_layer met5
+    """)
+    return True 
+
+def connect_core_stripes_to_ring(x: HammerTool) -> bool:
+    # connect floating stripes on met4/met5 in core area to power ring via layers met3-met5 (permissive), no jogging allowed
+    x.append('''
+route_special -connect floating_stripe -floating_stripe_target ring -nets {VDD VSS} -stripe_layer_range {met4 met5} -allow_jogging 0 -layer_change_range {met3 met5} -crossover_via_layer_range {met3 met5} -detailed_log
+''')
+    return True
+
+def assign_chiptop_io_pins(x: HammerTool) -> bool:
+    x.logger.info("CHIPTOP_IO_NETS: {}".format(" ".join(CHIPTOP_IO_NETS)))
+    x.append(f'''
+set_promoted_macro_pin -insts *iocell -pins {{ P_PAD PAD }}
+set_promoted_macro_pin -insts clamp* -pins {{ VDDIO VSSD VCCD VSSA VDDA }}
+assign_io_pins -pins {{ {" ".join(CHIPTOP_IO_NETS)} }}
+''')
+    return True
+
+def add_fillers(x: HammerTool) -> bool:
+    x.add_fillers()  # call Hammer's add_fillers step (including decaps)
+    # point of optimization: decaps should be added before route_opt_design so route_opt_design is aware of added capacitance & leakage, but this involves splitting Hammer's add_fillers step in 2 (decaps before route_opt_design, fillers after).
+    return True
+
+def par_design_effort(x: HammerTool) -> bool:
+    x.append("""
+    set_db design_cong_effort high
+    set_db place_global_cong_effort high
+    set_db design_flow_effort extreme
+    """)
+    return True
+
+# should already be done in sky130/__init__.py # sky130_innovus_settings()
+# TODO(jimfang) is this still needed? remove if not;
+def set_die_snap_to_mfg_grid(x: HammerTool) -> bool:
+    x.append('set_db floorplan_snap_die_grid manufacturing')
+    return True
+
+def chiptop_dont_route(x: HammerTool) -> bool:
+    for net in CHIPTOP_DONT_TOUCH_NETS:
+      x.append(f"set_route_attributes -nets {net} -skip_routing true")
+    return True
+
+
+def force_bias_pins_nets(x: HammerTool) -> bool:
+    x.append('''
+connect_global_net VDDIO -netlist_override -power_domain HV -pin_base_name VPB -type pg_pin -verbose
+connect_global_net VDD -netlist_override -power_domain AO -pin_base_name VPB -type pg_pin -verbose
+connect_global_net VSS -netlist_override -power_domain HV -pin_base_name VNB -type pg_pin -verbose
+connect_global_net VSS -netlist_override -power_domain AO -pin_base_name VNB -type pg_pin -verbose
+''')
+    return True
+
+def efabless_ring_io(ht: HammerTool) -> bool:
+    # Copied from Harrison's version in hammer to make some adjustments:
+    # - global connections removed - now handled by CPF
+    # - add fixing of IO fillers
+    # TODO(jimfang) test this hook when IO ring size changes
+    io_file = ht.get_setting("technology.sky130.io_file")
+    ht.append(f"read_io_file {io_file} -no_die_size_adjust") # need to adjust die size manually in example-sky130.yml as well if planning to change die & io ring size
+    p_nets = list(map(lambda s: s.name, ht.get_independent_power_nets()))
+    g_nets = list(map(lambda s: s.name, ht.get_independent_ground_nets()))
+    ht.logger.info("p_nets[0]: {}, g_nets[0]: {}".format(p_nets[0], g_nets[0]))
+    
+    # TODO: put only a few supply tie cells instead of replacing all 20um?
+    
+    # VCCHIB  ↔ VCCD
+    # VSWITCH ↔ VDDIO
+    # VSSIO   ↔ VSSA ↔ VSSD
+    ht.append('''
+# IO fillers
+# set io_fillers {sky130_ef_io__com_bus_slice_20um sky130_ef_io__com_bus_slice_10um sky130_ef_io__com_bus_slice_5um sky130_ef_io__com_bus_slice_1um}
+
+set io_fillers {sky130_ef_io__connect_vcchib_vccd_and_vswitch_vddio_and_vssio_vssa_vssd_slice_20um sky130_ef_io__com_bus_slice_10um sky130_ef_io__com_bus_slice_5um sky130_ef_io__com_bus_slice_1um}
+add_io_fillers -prefix IO_FILLER -io_ring 1 -cells $io_fillers -side top -filler_orient r0
+add_io_fillers -prefix IO_FILLER -io_ring 1 -cells $io_fillers -side right -filler_orient r270
+add_io_fillers -prefix IO_FILLER -io_ring 1 -cells $io_fillers -side bottom -filler_orient r180
+add_io_fillers -prefix IO_FILLER -io_ring 1 -cells $io_fillers -side left -filler_orient r90
+# Fix placement
+set io_filler_insts [get_db insts IO_FILLER_*]
+set_db $io_filler_insts .place_status fixed
+''')
+    
+    ht.append("""
+# Reload CPF to assign domains to just-placed physical-only cells
+read_power_intent -cpf power_spec.cpf
+commit_power_intent
+""")
+    
+    # bias pins not respected for some reason
+    force_bias_pins_nets(ht)
+    
+    # Most top edge of die
+    #
+    # I/O cells
+    # ════════════════════════════════  horizontal I/O ring edge
+    #
+    #         5 µm offset
+    # ────────────────────────────────  first VDD/VSS track (13µm), horizontal
+    #         3 µm spacing
+    # ────────────────────────────────  second VSS/VDD track (13µm), horizontal
+    #
+    # Core
+    
+    ht.append(f'''
+# Core ring
+add_rings -follow io -layer met5 -nets {{ {p_nets[0]} {g_nets[0]} }} -offset 5 -width 13 -spacing 3
+route_special -connect pad_pin -nets {{ {p_nets[0]} {g_nets[0]} }} -detailed_log
+''')
+    
+    ht.append('''
+# Prevent buffering on TIE_LO_ESD and TIE_HI_ESD
+set_dont_touch [get_db [get_db pins -if {.name == *TIE*ESD}] .net]
+''')
+    return True
+
+# jim: deprecated 8/7 4:02 AM
+# def place_reset_level_shifter(x: HammerTool) -> bool:
+#     x.append(r'''
+# set tap [get_db insts IO_FILLER_RESET_TAP]
+# set ls  [get_db insts iocell_reset/levelShifter]
+
+# if {$tap eq "" || $ls eq ""} {
+#     error "Missing IO_FILLER_RESET_TAP or reset level shifter"
+# }
+
+# # Common UI bbox format:
+# #   {lower_left_x lower_left_y upper_right_x upper_right_y}
+# set tap_bbox [get_db $tap .bbox]
+# lassign $tap_bbox tap_llx tap_lly tap_urx tap_ury
+
+# # Traverse from the instance to its base cell and read:
+# #   {width height}
+# set ls_size  [get_db $ls .base_cell.size]
+# set ls_width [lindex $ls_size 0]
+
+# # Tune only these values.
+# # 1.260 and 3.455 reproduce the placement from the old DEF.
+# set x_offset 1.260
+# set y_offset 3.455
+
+# set tap_center_x [expr {
+#     ($tap_llx + $tap_urx) / 2.0
+# }]
+
+# set ls_x [expr {
+#     $tap_center_x - $ls_width / 2.0 + $x_offset
+# }]
+
+# set ls_y [expr {
+#     $tap_ury + $y_offset
+# }]
+
+# set_db $ls .orient r0
+# set_db $ls .location [list $ls_x $ls_y]
+# set_db $ls .place_status fixed
+
+# puts "Reset LS placed at [get_db $ls .location]"
+# puts "Reset LS bbox: [get_db $ls .bbox]"
+# ''')
+#     return True
+
+def place_reset_level_shifter(x: HammerTool) -> bool:
+    x.append(r'''
+set tap [get_db insts IO_FILLER_RESET_TAP]
+set ls  [get_db insts iocell_reset/levelShifter]
+
+if {$tap eq ""} {
+    error "Missing IO_FILLER_RESET_TAP"
+}
+
+if {$ls eq ""} {
+    error "Missing reset level shifter"
+}
+
+# Force the level shifter to the desired orientation before
+# using its physical bbox to determine its width.
+set_db $ls .orient r0
+
+# Common UI instance bbox:
+#   {lower_left_x lower_left_y upper_right_x upper_right_y}
+lassign [get_db $tap .bbox] \
+    tap_llx tap_lly tap_urx tap_ury
+
+lassign [get_db $ls .bbox] \
+    ls_llx ls_lly ls_urx ls_ury
+
+set ls_width [expr {$ls_urx - $ls_llx}]
+
+# Tune only these values.
+# 1.260 and 3.455 reproduce the placement from the old DEF.
+set x_offset 1.260
+set y_offset 3.455
+
+set tap_center_x [expr {
+    ($tap_llx + $tap_urx) / 2.0
+}]
+
+set ls_x [expr {
+    $tap_center_x - $ls_width / 2.0 + $x_offset
+}]
+
+set ls_y [expr {
+    $tap_ury + $y_offset
+}]
+
+set_db $ls .location [list $ls_x $ls_y]
+set_db $ls .place_status fixed
+
+puts "Reset LS placed at [get_db $ls .location]"
+puts "Reset LS bbox: [get_db $ls .bbox]"
+''')
+    return True
+
+def route_reset_level_shifter_power(x: HammerTool) -> bool:
+    x.append(r'''
+set tap [get_db insts IO_FILLER_RESET_TAP]
+set ls  [get_db insts iocell_reset/levelShifter]
+
+if {$tap eq "" || $ls eq ""} {
+    error "Missing IO_FILLER_RESET_TAP or reset level shifter"
+}
+
+# ----------------------------------------------------------------------
+# This is a translated copy of the working stac-hv-routing.def geometry.
+#
+# Assumptions:
+#   - tap master is sky130_ef_io__com_bus_slice_20um
+#   - tap is on the bottom side with its expected orientation
+#   - level shifter orientation is R0
+#   - level-shifter power-pin geometry is unchanged
+# ----------------------------------------------------------------------
+
+# Common UI bbox format:
+#   {lower_left_x lower_left_y upper_right_x upper_right_y}
+set tap_bbox [get_db $tap .bbox]
+lassign $tap_bbox tap_llx tap_lly tap_urx tap_ury
+
+set ls_location [get_db $ls .location]
+lassign $ls_location ls_x ls_y
+
+puts "Tap bbox:   $tap_bbox"
+puts "LS origin:  $ls_location"
+
+# Create one fixed rectangular special-net shape.
+proc add_fixed_pg_rect {net layer x0 y0 x1 y1} {
+    set shape [create_shape \
+        -net $net \
+        -layer $layer \
+        -rect [list $x0 $y0 $x1 $y1] \
+        -status fixed]
+
+    return $shape
+}
+
+# Add power vias inside a local rectangular area.
+proc add_pg_vias {net bottom_layer top_layer x y half_size} {
+    set area [list \
+        [expr {$x - $half_size}] \
+        [expr {$y - $half_size}] \
+        [expr {$x + $half_size}] \
+        [expr {$y + $half_size}]]
+
+    update_power_vias \
+        -add_vias 1 \
+        -nets [list $net] \
+        -bottom_layer $bottom_layer \
+        -top_layer $top_layer \
+        -area $area
+}
+
+# ======================================================================
+# VDDIO
+#
+# Working DEF:
+#   bus-side M4->M2 stack:
+#       tap_ll + (6.150, 177.890)
+#
+#   met2 trunk:
+#       x = LS origin - 1.030
+#
+#   LS-side M2->M1 via:
+#       LS origin + (-1.030, 4.070)
+#
+#   three met1 collector bars join the VDDIO pin shapes.
+# ======================================================================
+
+set vddio_x      [expr {$ls_x - 1.030}]
+set vddio_bus_y  [expr {$tap_lly + 177.890}]
+set vddio_top_y  [expr {$ls_y + 4.695}]
+
+# Vertical met2 trunk, width 0.370 um.
+add_fixed_pg_rect VDDIO met2 \
+    [expr {$vddio_x - 0.185}] \
+    [expr {$tap_lly + 175.565}] \
+    [expr {$vddio_x + 0.185}] \
+    $vddio_top_y
+
+# Three horizontal met1 collector bars from the working DEF.
+set collector_x0 [expr {$ls_x - 1.215}]
+set collector_x1 [expr {$ls_x + 0.265}]
+
+add_fixed_pg_rect VDDIO met1 \
+    $collector_x0 \
+    [expr {$ls_y + 3.445}] \
+    $collector_x1 \
+    [expr {$ls_y + 3.815}]
+
+add_fixed_pg_rect VDDIO met1 \
+    $collector_x0 \
+    [expr {$ls_y + 3.955}] \
+    $collector_x1 \
+    [expr {$ls_y + 4.185}]
+
+add_fixed_pg_rect VDDIO met1 \
+    $collector_x0 \
+    [expr {$ls_y + 4.325}] \
+    $collector_x1 \
+    [expr {$ls_y + 4.695}]
+
+# I/O bus side: met4 down to met2.
+add_pg_vias VDDIO met2 met4 \
+    $vddio_x $vddio_bus_y 0.60
+
+# Level-shifter side: met2 down to met1 collector.
+add_pg_vias VDDIO met1 met2 \
+    $vddio_x [expr {$ls_y + 4.070}] 0.35
+
+# ======================================================================
+# VSS
+#
+# One met2 trunk with four M1->M2 via landings:
+#   two near the bottom of the cell
+#   two near the top of the cell
+# ======================================================================
+
+set vss_x      [expr {$ls_x + 0.185}]
+set vss_bus_y  [expr {$tap_lly + 171.840}]
+set vss_top_y  [expr {$ls_y + 8.255}]
+
+# Vertical met2 trunk, width 0.370 um.
+add_fixed_pg_rect VSS met2 \
+    [expr {$vss_x - 0.185}] \
+    [expr {$tap_lly + 169.515}] \
+    [expr {$vss_x + 0.185}] \
+    $vss_top_y
+
+# I/O bus side: met4 down to met2.
+add_pg_vias VSS met2 met4 \
+    $vss_x $vss_bus_y 0.60
+
+# Four LS-side M1->M2 via locations from the old DEF.
+foreach y_offset {-0.015 0.440 7.700 8.155} {
+    add_pg_vias VSS met1 met2 \
+        $vss_x [expr {$ls_y + $y_offset}] 0.25
+}
+
+# ======================================================================
+# VDD
+#
+# Independent right-side met2 trunk to LVPWR.
+# ======================================================================
+
+set vdd_x      [expr {$ls_x + 7.590}]
+set vdd_bus_y  [expr {$tap_lly + 188.790}]
+set vdd_top_y  [expr {$ls_y + 3.305}]
+
+# Vertical met2 trunk, width 0.280 um.
+add_fixed_pg_rect VDD met2 \
+    [expr {$vdd_x - 0.140}] \
+    [expr {$tap_lly + 186.465}] \
+    [expr {$vdd_x + 0.140}] \
+    $vdd_top_y
+
+# I/O bus side: met4 down to met2.
+add_pg_vias VDD met2 met4 \
+    $vdd_x $vdd_bus_y 0.60
+
+# LS-side M2->M1 via to LVPWR.
+add_pg_vias VDD met1 met2 \
+    $vdd_x [expr {$ls_y + 3.165}] 0.30
+
+puts "Completed translated LS power-routing template"
+''')
+    return True
+
+
+
+
+def place_por(ht: HammerTool) -> bool:
+    """
+    Place the logical simple_por instance at the lower-right corner of the
+    core, reproducing the placement and halos from the DEF based routing, but with relative coordinates.
+
+    Existing DEF relationship:
+        por_x = core_urx - 56.580 um
+        por_y = core_lly -  6.120 um
+        orientation = FS in DEF = mx in Stylus Common UI
+    """
+    
+    ht.append(r"""
+########################################################################
+# Place simple_por at the lower-right corner of the core
+########################################################################
+
+# Do not include the top-level module name here.
+#
+# Examples:
+#   Top-level RTL instance:             por
+#   Instance inside system hierarchy:  system/por
+set por_inst "por"
+
+# Placement relationship recovered from ofo-hv-routing.def.
+set por_right_anchor 56.580
+set por_below_core    6.120
+
+########################################################################
+# Confirm the instance exists
+########################################################################
+
+set por_objs [get_db insts $por_inst]
+
+if {[llength $por_objs] != 1} {
+    error [format \
+        "Expected exactly one PoR instance named '%s'; found %d: %s" \
+        $por_inst \
+        [llength $por_objs] \
+        $por_objs]
+}
+
+set por_obj [lindex $por_objs 0]
+
+########################################################################
+# Obtain the current core boundary
+########################################################################
+
+set core_urx [get_db current_design .core_bbox.ur.x]
+set core_lly [get_db current_design .core_bbox.ll.y]
+
+if {$core_urx eq "" || $core_lly eq ""} {
+    error "The core bounding box has not been created before place_por"
+}
+
+########################################################################
+# Calculate placement
+########################################################################
+
+set por_x [expr {$core_urx - $por_right_anchor}]
+set por_y [expr {$core_lly - $por_below_core}]
+
+puts [format \
+    "place_por: core_urx=%.3f core_lly=%.3f" \
+    $core_urx \
+    $core_lly]
+
+puts [format \
+    "place_por: placing %s at {%.3f %.3f}, orient=mx, status=fixed" \
+    $por_inst \
+    $por_x \
+    $por_y]
+
+########################################################################
+# Place the macro
+#
+# DEF orientation FS corresponds to Common UI orientation mx:
+# reflection across the X axis.
+########################################################################
+
+place_inst \
+    $por_inst \
+    [list $por_x $por_y] \
+    mx \
+    -fixed
+
+########################################################################
+# Reproduce the asymmetric placement halo from the DEF
+#
+# halo_deltas order:
+#     left bottom right top
+#
+# Old DEF:
+#     HALO 10120 0 0 11350
+########################################################################
+
+create_place_halo \
+    -insts $por_inst \
+    -halo_deltas {10.120 0.000 0.000 11.350}
+
+########################################################################
+# Reproduce the routing halo from the DEF
+#
+# This is not the separate Hammer met1 obstruction.
+########################################################################
+
+create_route_halo \
+    -inst $por_inst \
+    -bottom_layer li1 \
+    -top_layer met3 \
+    -space 2.000
+
+########################################################################
+# Report result
+########################################################################
+
+set por_obj [lindex [get_db insts $por_inst] 0]
+
+puts [format \
+    "place_por: final bbox=%s place_status=%s" \
+    [get_db $por_obj .bbox] \
+    [get_db $por_obj .place_status]]
+
+########################################################################
+# Basic placement assertions
+########################################################################
+
+if {[get_db $por_obj .place_status] ne "fixed"} {
+    error [format \
+        "PoR instance '%s' was not fixed after place_inst" \
+        $por_inst]
+}
+""")
+
+    return True
+
+
+def route_por_power(x: HammerTool) -> bool:
+    x.append(r'''
+########################################################################
+# Route simple_por PG pins.
+#
+# Must run after:
+#   - the PoR has been placed and fixed
+#   - the IO ring/fillers have been created
+#   - the VDD/VSS power rings have been created
+#
+# All coordinates below are relative to the placed PoR origin and
+# reproduce the routing in ofo-hv-routing.def.
+########################################################################
+
+set por_inst "por"
+
+set por_objs [get_db insts $por_inst]
+if {[llength $por_objs] != 1} {
+    error [format \
+        "Expected exactly one PoR instance named '%s'; found %d" \
+        $por_inst [llength $por_objs]]
+}
+
+set por_obj [lindex $por_objs 0]
+
+if {[get_db $por_obj .place_status] ne "fixed"} {
+    error "PoR instance '$por_inst' must be fixed before power routing"
+}
+
+if {[get_db $por_obj .orient] ne "mx"} {
+    error [format \
+        "PoR instance '%s' must have mx orientation; found '%s'" \
+        $por_inst [get_db $por_obj .orient]]
+}
+
+lassign [get_db $por_obj .location] por_x por_y
+
+puts [format \
+    "route_por_power: PoR origin={%.3f %.3f}" \
+    $por_x $por_y]
+
+
+########################################################################
+# Logical PG attachment
+#
+# These are safe to retain even when the same associations are expressed
+# by CPF, because they make the intended macro-pin mapping explicit.
+########################################################################
+
+connect_global_net VDDIO \
+    -type pg_pin \
+    -pin_base_name vdd3v3 \
+    -single_inst $por_inst \
+    -override \
+    -verbose
+
+connect_global_net VDD \
+    -type pg_pin \
+    -pin_base_name vdd1v8 \
+    -single_inst $por_inst \
+    -override \
+    -verbose
+
+connect_global_net VSS \
+    -type pg_pin \
+    -pin_base_name vss3v3 \
+    -single_inst $por_inst \
+    -override \
+    -verbose
+
+connect_global_net VSS \
+    -type pg_pin \
+    -pin_base_name vss1v8 \
+    -single_inst $por_inst \
+    -override \
+    -verbose
+
+
+########################################################################
+# Create a fixed SPECIALNET wire segment.
+########################################################################
+
+proc por_create_shape {net layer width x1 y1 x2 y2} {
+    puts [format \
+        "route_por_power: %-5s %-4s width=%.3f {%8.3f %8.3f} -> {%8.3f %8.3f}" \
+        $net $layer $width $x1 $y1 $x2 $y2]
+
+    return [create_shape \
+        -net $net \
+        -layer $layer \
+        -path_segment [list $x1 $y1 $x2 $y2] \
+        -width $width \
+        -status FIXED]
+}
+
+
+########################################################################
+# Add vias only between local wires belonging to one net.
+#
+# The area includes:
+#   - the newly created PoR route
+#   - the existing filler bus or power ring
+#
+# Selecting a local area avoids adding vias throughout the entire chip.
+########################################################################
+
+proc por_add_local_vias {
+    net bottom_layer top_layer llx lly urx ury
+} {
+    set area [list $llx $lly $urx $ury]
+
+    set local_wires [get_obj_in_area \
+        -obj_type special_wire \
+        -areas $area \
+        -layers [list $bottom_layer $top_layer]]
+
+    if {[llength $local_wires] == 0} {
+        error [format \
+            "No special wires found for %s in area %s on {%s %s}" \
+            $net $area $bottom_layer $top_layer]
+    }
+
+    set net_wires [get_db $local_wires \
+        -if ".net.name == $net"]
+
+    if {[llength $net_wires] < 2} {
+        error [format \
+            "Expected at least two %s special wires in area %s on {%s %s}; found %d" \
+            $net $area $bottom_layer $top_layer \
+            [llength $net_wires]]
+    }
+
+    deselect_obj -all
+    select_obj $net_wires
+
+    update_power_vias \
+        -add_vias true \
+        -between_selected_wires true \
+        -bottom_layer $bottom_layer \
+        -top_layer $top_layer \
+        -orthogonal_only false
+
+    deselect_obj -all
+}
+
+
+########################################################################
+# VDDIO: por/vdd3v3
+#
+# PoR pin is met4.
+#
+# The short met4 segment touches the macro pin. It drops to a vertical
+# met3 trunk, which reaches the VDDIO met4 bus in the 20 um IO filler.
+#
+# Old absolute DEF geometry:
+#   met3: x=3277.200, y=175.565..247.835, width=1.000
+#   met4: y=247.035, x=3277.370..3282.005, width=1.600
+########################################################################
+
+set vddio_m3_x  [expr {$por_x - 4.440}]
+set vddio_m3_y0 [expr {$por_y - 70.395}]
+set vddio_m3_y1 [expr {$por_y +  1.875}]
+
+set vddio_m4_x0 [expr {$por_x - 4.270}]
+set vddio_m4_x1 [expr {$por_x + 0.365}]
+set vddio_m4_y  [expr {$por_y + 1.075}]
+
+por_create_shape \
+    VDDIO met3 1.000 \
+    $vddio_m3_x $vddio_m3_y0 \
+    $vddio_m3_x $vddio_m3_y1
+
+por_create_shape \
+    VDDIO met4 1.600 \
+    $vddio_m4_x0 $vddio_m4_y \
+    $vddio_m4_x1 $vddio_m4_y
+
+por_add_local_vias \
+    VDDIO met3 met4 \
+    [expr {$por_x - 5.500}] \
+    [expr {$por_y - 71.500}] \
+    [expr {$por_x + 1.500}] \
+    [expr {$por_y +  3.000}]
+
+
+########################################################################
+# VSS 3.3 V: por/vss3v3
+#
+# PoR pin is met4.
+#
+# The short met4 segment touches the wide macro pin. It drops to met3
+# and reaches the VSS met4 bus in the same 20 um IO filler.
+#
+# Old absolute DEF geometry:
+#   met3: x=3275.460, y=169.515..250.975, width=1.000
+#   met4: y=250.175, x=3274.960..3283.250, width=1.600
+########################################################################
+
+set vss33_m3_x  [expr {$por_x - 6.180}]
+set vss33_m3_y0 [expr {$por_y - 76.445}]
+set vss33_m3_y1 [expr {$por_y +  5.015}]
+
+set vss33_m4_x0 [expr {$por_x - 6.680}]
+set vss33_m4_x1 [expr {$por_x + 1.610}]
+set vss33_m4_y  [expr {$por_y + 4.215}]
+
+por_create_shape \
+    VSS met3 1.000 \
+    $vss33_m3_x $vss33_m3_y0 \
+    $vss33_m3_x $vss33_m3_y1
+
+por_create_shape \
+    VSS met4 1.600 \
+    $vss33_m4_x0 $vss33_m4_y \
+    $vss33_m4_x1 $vss33_m4_y
+
+por_add_local_vias \
+    VSS met3 met4 \
+    [expr {$por_x - 7.500}] \
+    [expr {$por_y - 77.500}] \
+    [expr {$por_x + 2.500}] \
+    [expr {$por_y +  6.000}]
+
+
+########################################################################
+# VDD 1.8 V: por/vdd1v8
+#
+# The pin is on met4 near the right side of the PoR. A vertical met4
+# block wire reaches the met5 VDD ring directly below it.
+#
+# Old absolute DEF geometry:
+#   met4: x=3336.595, y=215.965..247.020, width=1.890
+#   met4/met5 via near y=222.465
+########################################################################
+
+set vdd18_m4_x  [expr {$por_x + 54.955}]
+set vdd18_m4_y0 [expr {$por_y - 29.995}]
+set vdd18_m4_y1 [expr {$por_y +  1.060}]
+
+por_create_shape \
+    VDD met4 1.890 \
+    $vdd18_m4_x $vdd18_m4_y0 \
+    $vdd18_m4_x $vdd18_m4_y1
+
+por_add_local_vias \
+    VDD met4 met5 \
+    [expr {$por_x + 53.000}] \
+    [expr {$por_y - 31.000}] \
+    [expr {$por_x + 57.500}] \
+    [expr {$por_y +  2.000}]
+
+
+########################################################################
+# VSS 1.8 V: por/vss1v8
+#
+# The macro pin is on met1 and projects slightly below the nominal
+# macro boundary after mx reflection.
+#
+# The old DEF used:
+#   - a short met1 segment out of the pin
+#   - a met2 vertical segment
+#   - custom elongated M2/M3, M3/M4, and M4/M5 via pillars
+#
+# Here we build equivalent overlapping metal columns and let Innovus
+# generate legal via arrays between them.
+########################################################################
+
+set vss18_x      [expr {$por_x - 1.240}]
+set vss18_y0     [expr {$por_y - 13.995}]
+set vss18_y1     [expr {$por_y -  1.030}]
+
+set vss18_m1_x0  [expr {$por_x - 1.540}]
+set vss18_m1_x1  [expr {$por_x + 0.290}]
+set vss18_m1_y   [expr {$por_y - 1.375}]
+
+# Short met1 access from the vss1v8 macro pin.
+por_create_shape \
+    VSS met1 0.690 \
+    $vss18_m1_x0 $vss18_m1_y \
+    $vss18_m1_x1 $vss18_m1_y
+
+# Vertical stacked-metal pillar into the VSS ring.
+por_create_shape \
+    VSS met2 0.600 \
+    $vss18_x $vss18_y0 \
+    $vss18_x $vss18_y1
+
+por_create_shape \
+    VSS met3 0.600 \
+    $vss18_x $vss18_y0 \
+    $vss18_x $vss18_y1
+
+por_create_shape \
+    VSS met4 1.420 \
+    $vss18_x $vss18_y0 \
+    $vss18_x $vss18_y1
+
+por_create_shape \
+    VSS met5 1.420 \
+    $vss18_x $vss18_y0 \
+    $vss18_x $vss18_y1
+
+set vss18_area_llx [expr {$por_x - 2.500}]
+set vss18_area_lly [expr {$por_y - 15.000}]
+set vss18_area_urx [expr {$por_x + 1.000}]
+set vss18_area_ury [expr {$por_y + 0.000}]
+
+por_add_local_vias \
+    VSS met1 met2 \
+    $vss18_area_llx $vss18_area_lly \
+    $vss18_area_urx $vss18_area_ury
+
+por_add_local_vias \
+    VSS met2 met3 \
+    $vss18_area_llx $vss18_area_lly \
+    $vss18_area_urx $vss18_area_ury
+
+por_add_local_vias \
+    VSS met3 met4 \
+    $vss18_area_llx $vss18_area_lly \
+    $vss18_area_urx $vss18_area_ury
+
+por_add_local_vias \
+    VSS met4 met5 \
+    $vss18_area_llx $vss18_area_lly \
+    $vss18_area_urx $vss18_area_ury
+
+
+########################################################################
+# Final report
+########################################################################
+
+puts "route_por_power: completed PoR PG routing"
+puts "route_por_power: porb_h was intentionally left for normal routing"
+
+deselect_obj -all
+''')
+
+    return True
+
+
+def _has_cached_sram_placement(x: HammerTool) -> bool:
+    """
+    Warm-path detector. Returns True if the user has passed in a Hammer
+    placement_constraints yaml (via HAMMER_EXTRA_ARGS -p ...) that already
+    contains hardmacro entries for SRAM instances.
+    """
+    consts = x.get_setting("vlsi.inputs.placement_constraints") or []
+    for c in consts:
+        path = c.get("path", "") if isinstance(c, dict) else getattr(c, "path", "") or ""
+        ctype = c.get("type", "") if isinstance(c, dict) else getattr(c, "type", "")
+        ctype_str = str(ctype).lower()
+        if "hardmacro" in ctype_str:
+            return True
+    return False
+
+def place_sram_macros(x: HammerTool) -> bool:
+    if _has_cached_sram_placement(x):
+        x.append(r'''
+            puts "place_sram_macros: warm path -- SRAM placement supplied via vlsi.inputs.placement_constraints, skipping macro placement entirely"
+
+            set sram_insts [get_db insts -if {.base_cell.name == *sram22*}]
+
+            foreach sram_inst $sram_insts {
+                set sram_name [get_db $sram_inst .name]
+                create_place_halo \
+                    -insts $sram_name \
+                    -halo_deltas {8.28 8.28 8.28 8.28}
+            }
+
+            set_db $sram_insts .place_status fixed
+        ''')
+        return True
+
+    # checkpoint path: solve macro placement, then checkpoint -- export as Hammer's placement_constraints yaml
+    # via: make par HAMMER_EXTRA_ARGS="-p <cache_path>"
+    cache_path = f"{x.run_dir}/sram_macro_placement.yml"
+    top_module = x.top_module
+
+    # -forbidden_space_to_macro 4.14
+    # -min_space_to_macro       8.28
+    
+    # gap < 4.14
+    # -> collapse the gap; abut the macros
+
+    # 4.14 < gap < 8.28
+    #     -> enlarge the gap to 8.28
+
+    # gap >= 8.28
+    #     -> leave it alone
+    
+    # min_space = Specifies the value for forbidden spacing between macro to core boundary. If the space between the macro and core is smaller than this value, then the macros are abutted.
+
+    # forbidden_space = Specifies the value for forbidden spacing between a macro to macro. If the space between the macros is smaller than this value, then the macros are abutted.
+    
+    x.append(f'''
+        set_macro_place_constraint \
+            -max_io_pin_group_keep_out 20 \
+            -align_parallel_run_length_ratio 0.4 \
+            -align_range_ratio 1.0 \
+            -min_space_to_core 8.28 \
+            -forbidden_space_to_core 0.0 \
+            -min_space_to_macro 8.28 \
+            -forbidden_space_to_macro 0.0 \
+            -flip_macro_focus narrow_channel
+
+        # create_pg_model_for_macro_place -file golden_pg_model.tcl
+        # source golden_pg_model.tcl
+        set_macro_place_constraint -pg_resource_model "met3 0.00076274 met4 0.00028909 met5 0.0075615 "
+
+        puts "place_design -concurrent_macros"
+        place_design -concurrent_macros
+
+        puts "place_macro_detail"
+        place_macro_detail
+
+        set sram_insts [get_db insts -if {{.base_cell.name == *sram22*}}]
+
+        foreach sram_inst $sram_insts {{
+            set sram_name [get_db $sram_inst .name]
+
+            create_place_halo \
+                -insts $sram_name \
+                -halo_deltas {{8.28 8.28 8.28 8.28}}
+        }}
+
+        # Fix only SRAM positions.
+        set_db $sram_insts .place_status fixed
+
+        # Copy the temporary placement.
+        write_def_by_section -comp_placement -no_nets temp_placement.def
+
+        # Remove only temporary standard-cell placement.
+        # set std_insts [get_db insts -if {{!.is_macro && .base_cell.base_class == core}}]
+        # unplace_obj -insts $std_insts
+        unplace_obj -insts
+
+        check_floorplan -out_file post_macro_place_fp_check.rpt
+
+        # Export solved SRAM macro placement as Hammer placement_constraints YAML.
+        set _sram_cache_path "{cache_path}"
+        set _sram_top_module "{top_module}"
+
+        # Catch write failures
+        if {{[catch {{
+            set _fh [open $_sram_cache_path w]
+            puts $_fh "# Auto-generated by place_sram_macros hook -- solved SRAM placement."
+            puts $_fh "# Pass via HAMMER_EXTRA_ARGS=\\"-p $_sram_cache_path\\" to skip concurrent macro placement on later runs."
+            puts $_fh "vlsi.inputs.placement_constraints_meta: append"
+            puts $_fh "vlsi.inputs.placement_constraints:"
+
+            foreach _inst $sram_insts {{
+                set _name   [get_db $_inst .name]
+                set _loc    [get_db $_inst .location]
+                set _orient [string tolower [get_db $_inst .orient]]
+                set _xy [lindex $_loc 0]
+                set _x [lindex $_xy 0]
+                set _y [lindex $_xy 1]
+
+                puts $_fh "  - path: \\"$_sram_top_module/$_name\\""
+                puts $_fh "    type: hardmacro"
+                puts $_fh "    x: $_x"
+                puts $_fh "    y: $_y"
+                puts $_fh "    orientation: $_orient"
+            }}
+
+            close $_fh
+            puts "place_sram_macros: wrote SRAM placement cache to $_sram_cache_path"
+        }} _err]}} {{
+            puts "place_sram_macros: WARNING failed to write SRAM placement cache: $_err"
+        }}
+    ''')
+
+    return True
+
+def block_sram_escape_corridors_from_pg(x: HammerTool) -> bool:
+    # creates an M2-only, PG-only blockage in the external halo on only the sides containing SRAM signal pins.
+
+    x.append(r'''
+        ##############################################################
+        # Reserve SRAM M2 escape corridors from PG routing.
+        #
+        # - Blocks PG nets only.
+        # - Blocks met2 only.
+        # - Excludes the SRAM bbox.
+        # - Covers only halo sides containing signal pins.
+        ##############################################################
+
+        set pin_margin [expr {2.0 * [get_db [get_db layers met2] .width]}]
+        set block_index 0
+
+        foreach inst [get_db insts -if {
+    .base_cell.name == *sram22*
+}] {
+    # SRAM bbox.
+    set ix1 [get_db $inst .bbox.ll.x]
+    set iy1 [get_db $inst .bbox.ll.y]
+    set ix2 [get_db $inst .bbox.ur.x]
+    set iy2 [get_db $inst .bbox.ur.y]
+
+    # Placement halo bbox.
+    set hx1 [get_db $inst .place_halo_bbox.ll.x]
+    set hy1 [get_db $inst .place_halo_bbox.ll.y]
+    set hx2 [get_db $inst .place_halo_bbox.ur.x]
+    set hy2 [get_db $inst .place_halo_bbox.ur.y]
+
+    array set edge_used {
+        left   0
+        right  0
+        bottom 0
+        top    0
+    }
+
+    array set span_lo {
+        left   1.0e30
+        right  1.0e30
+        bottom 1.0e30
+        top    1.0e30
+    }
+
+    array set span_hi {
+        left   -1.0e30
+        right  -1.0e30
+        bottom -1.0e30
+        top    -1.0e30
+    }
+
+    # Determine which placed SRAM edges contain signal pins.
+    foreach pin [get_db $inst .pins] {
+        set net [get_db $pin .net]
+
+        if {$net eq ""} {
+            continue
+        }
+
+        if {[get_db $net .is_power] || [get_db $net .is_ground]} {
+            continue
+        }
+
+        # Query point components directly.
+        set px [get_db $pin .location.x]
+        set py [get_db $pin .location.y]
+
+        # A logical pin may not have a usable physical location.
+        if {![string is double -strict $px] ||
+            ![string is double -strict $py]} {
+            puts "WARNING: skipping pin [get_db $pin .name]: location=<$px,$py>"
+            continue
+        }
+
+        set edge left
+        set distance [expr {abs($px - $ix1)}]
+
+        set d [expr {abs($px - $ix2)}]
+        if {$d < $distance} {
+            set edge right
+            set distance $d
+        }
+
+        set d [expr {abs($py - $iy1)}]
+        if {$d < $distance} {
+            set edge bottom
+            set distance $d
+        }
+
+        set d [expr {abs($py - $iy2)}]
+        if {$d < $distance} {
+            set edge top
+            set distance $d
+        }
+
+        if {$edge eq "left" || $edge eq "right"} {
+            set position $py
+        } else {
+            set position $px
+        }
+
+        set edge_used($edge) 1
+
+        if {$position < $span_lo($edge)} {
+            set span_lo($edge) $position
+        }
+
+        if {$position > $span_hi($edge)} {
+            set span_hi($edge) $position
+        }
+    }
+
+    set rects {}
+
+    if {$edge_used(left)} {
+        set y1 [expr {max($hy1, $span_lo(left) - $pin_margin)}]
+        set y2 [expr {min($hy2, $span_hi(left) + $pin_margin)}]
+        lappend rects [list $hx1 $y1 $ix1 $y2]
+    }
+
+    if {$edge_used(right)} {
+        set y1 [expr {max($hy1, $span_lo(right) - $pin_margin)}]
+        set y2 [expr {min($hy2, $span_hi(right) + $pin_margin)}]
+        lappend rects [list $ix2 $y1 $hx2 $y2]
+    }
+
+    if {$edge_used(bottom)} {
+        set x1 [expr {max($hx1, $span_lo(bottom) - $pin_margin)}]
+        set x2 [expr {min($hx2, $span_hi(bottom) + $pin_margin)}]
+        lappend rects [list $x1 $hy1 $x2 $iy1]
+    }
+
+    if {$edge_used(top)} {
+        set x1 [expr {max($hx1, $span_lo(top) - $pin_margin)}]
+        set x2 [expr {min($hx2, $span_hi(top) + $pin_margin)}]
+        lappend rects [list $x1 $iy2 $x2 $hy2]
+    }
+
+    if {[llength $rects] > 0} {
+        create_route_blockage \
+            -name sram_m2_pg_escape_$block_index \
+            -pg_nets \
+            -layers {met2} \
+            -rects $rects
+
+        incr block_index
+    }
+}
+
+        puts "block_sram_escape_corridors_from_pg: created $block_index blockage(s)"
+
+        ##############################################################
+    ''')
+
+    return True
+
+def route_sram_pin_escapes(x: HammerTool) -> bool:
+    # m1 doglegs from sram met1 pins
+    x.append(r'''
+        ##############################################################
+        # SRAM22 met1 -> met2 pin escapes
+        ##############################################################
+
+        proc snap_to_track {value start step} {
+            return [expr {
+                $start + round(($value - $start) / $step) * $step
+            }]
+        }
+
+        set met1_layer [get_db layers met1]
+        set met2_layer [get_db layers met2]
+
+        set met1_width [get_db $met1_layer .width]
+        set met2_width [get_db $met2_layer .width]
+
+        # Find the DEF track pattern containing met2.
+        foreach track [get_db current_design .track_patterns] {
+            if {[lsearch -exact [get_db $track .layers.name] met2] >= 0} {
+                set met2_track $track
+                break
+            }
+        }
+
+        set met2_track_direction [get_db $met2_track .direction]
+        set met2_track_start     [get_db $met2_track .start]
+        set met2_track_step      [get_db $met2_track .step]
+
+        # Get the met1-to-met2 generated-via rule and create/lookup a 1x1 via.
+        set via12_rule [lindex [get_db via_def_rules -if {
+            .bottom_layer.name == met1 &&
+            .top_layer.name == met2
+        }] 0]
+
+        set via12 [create_via_definition \
+            -via_rule $via12_rule \
+            -row_column {1 1}]
+
+        # Six staggered via depths fit comfortably inside the 8.28 um halo.
+        set num_lanes      6
+        set first_depth    [expr {2.0 * $met2_track_step}]
+        set lane_pitch     [expr {2.0 * $met2_track_step}]
+        set landing_length $met2_track_step
+
+        set escape_count 0
+
+        foreach inst [get_db insts -if {
+            .base_cell.name == *sram22*
+        }] {
+            set inst_bbox [lindex [get_db $inst .bbox] 0]
+            lassign $inst_bbox llx lly urx ury
+
+            unset -nocomplain edge_pins
+            array set edge_pins {
+                left   {}
+                right  {}
+                bottom {}
+                top    {}
+            }
+
+            # Collect and sort signal pins on each macro edge.
+            foreach pin [get_db $inst .pins] {
+                set pin_name [string tolower \
+                    [get_db $pin .base_pin.name]]
+
+                if {[regexp {
+                    ^(vdd|vss|vpwr|vgnd|vpb|vnb|vccd|vssd|vdda|vssa)
+                } $pin_name]} {
+                    continue
+                }
+
+                set net [get_db $pin .net]
+                if {$net eq ""} {
+                    continue
+                }
+
+                set met1_shapes [get_db \
+                    $pin .base_pin.physical_pins.layer_shapes \
+                    -if {.layer.name == met1}]
+
+                set local_rect [lindex \
+                    [get_db $met1_shapes .shapes.rect] 0]
+
+                set pin_rect [lindex \
+                    [get_transform_shapes \
+                        -inst $inst \
+                        -local_pt $local_rect] 0]
+
+                lassign $pin_rect px1 py1 px2 py2
+
+                set px [expr {($px1 + $px2) / 2.0}]
+                set py [expr {($py1 + $py2) / 2.0}]
+
+                set edge left
+                set nearest [expr {abs($px - $llx)}]
+
+                set distance [expr {abs($px - $urx)}]
+                if {$distance < $nearest} {
+                    set edge right
+                    set nearest $distance
+                }
+
+                set distance [expr {abs($py - $lly)}]
+                if {$distance < $nearest} {
+                    set edge bottom
+                    set nearest $distance
+                }
+
+                set distance [expr {abs($py - $ury)}]
+                if {$distance < $nearest} {
+                    set edge top
+                }
+
+                if {$edge eq "left" || $edge eq "right"} {
+                    set along_edge $py
+                } else {
+                    set along_edge $px
+                }
+
+                lappend edge_pins($edge) [list \
+                    $along_edge \
+                    [get_db $net .name] \
+                    $px \
+                    $py]
+            }
+
+            foreach edge {left right bottom top} {
+                set pin_index 0
+
+                foreach pin_info \
+                    [lsort -real -index 0 $edge_pins($edge)] {
+
+                    lassign $pin_info along_edge net_name px py
+
+                    set lane [expr {$pin_index % $num_lanes}]
+                    set depth [expr {
+                        $first_depth + $lane * $lane_pitch
+                    }]
+
+                    # Place the via at a staggered distance normal to
+                    # the SRAM edge. This keeps the M1 escape straight
+                    # and prevents M1 doglegs from crossing each other.
+                    switch -- $edge {
+                        left {
+                            set vx [expr {$llx - $depth}]
+                            set vy $py
+
+                            # DEF TRACKS X means vertical met2 tracks.
+                            if {$met2_track_direction eq "x"} {
+                                set vx [snap_to_track \
+                                    $vx \
+                                    $met2_track_start \
+                                    $met2_track_step]
+                            }
+                        }
+
+                        right {
+                            set vx [expr {$urx + $depth}]
+                            set vy $py
+
+                            if {$met2_track_direction eq "x"} {
+                                set vx [snap_to_track \
+                                    $vx \
+                                    $met2_track_start \
+                                    $met2_track_step]
+                            }
+                        }
+
+                        bottom {
+                            set vx $px
+                            set vy [expr {$lly - $depth}]
+
+                            # DEF TRACKS Y means horizontal met2 tracks.
+                            if {$met2_track_direction eq "y"} {
+                                set vy [snap_to_track \
+                                    $vy \
+                                    $met2_track_start \
+                                    $met2_track_step]
+                            }
+                        }
+
+                        top {
+                            set vx $px
+                            set vy [expr {$ury + $depth}]
+
+                            if {$met2_track_direction eq "y"} {
+                                set vy [snap_to_track \
+                                    $vy \
+                                    $met2_track_start \
+                                    $met2_track_step]
+                            }
+                        }
+                    }
+
+                    # Fixed M1 escape from the SRAM pin to the via site.
+                    create_shape \
+                        -net $net_name \
+                        -layer met1 \
+                        -path_segment [list $px $py $vx $vy] \
+                        -width $met1_width \
+                        -status fixed
+
+                    # Fixed M1-to-M2 via.
+                    create_via \
+                        -net $net_name \
+                        -via_def $via12 \
+                        -location [list $vx $vy] \
+                        -status fixed
+
+                    set half_landing \
+                        [expr {$landing_length / 2.0}]
+
+                    if {$met2_track_direction eq "x"} {
+                        # Vertical met2 tracks.
+                        set tx [snap_to_track \
+                            $vx \
+                            $met2_track_start \
+                            $met2_track_step]
+
+                        # Short M2 jog when the via is not already on-track.
+                        if {[expr {abs($tx - $vx)}] > 1.0e-6} {
+                            create_shape \
+                                -net $net_name \
+                                -layer met2 \
+                                -path_segment [list \
+                                    $vx $vy $tx $vy] \
+                                -width $met2_width \
+                                -status fixed
+                        }
+
+                        create_shape \
+                            -net $net_name \
+                            -layer met2 \
+                            -path_segment [list \
+                                $tx [expr {$vy - $half_landing}] \
+                                $tx [expr {$vy + $half_landing}]] \
+                            -width $met2_width \
+                            -status fixed
+                    } else {
+                        # Horizontal met2 tracks.
+                        set ty [snap_to_track \
+                            $vy \
+                            $met2_track_start \
+                            $met2_track_step]
+
+                        if {[expr {abs($ty - $vy)}] > 1.0e-6} {
+                            create_shape \
+                                -net $net_name \
+                                -layer met2 \
+                                -path_segment [list \
+                                    $vx $vy $vx $ty] \
+                                -width $met2_width \
+                                -status fixed
+                        }
+
+                        create_shape \
+                            -net $net_name \
+                            -layer met2 \
+                            -path_segment [list \
+                                [expr {$vx - $half_landing}] $ty \
+                                [expr {$vx + $half_landing}] $ty] \
+                            -width $met2_width \
+                            -status fixed
+                    }
+
+                    incr pin_index
+                    incr escape_count
+                }
+            }
+        }
+
+        puts "route_sram_pin_escapes: created $escape_count SRAM pin escapes"
+
+        ##############################################################
+    ''')
+
+    return True
+
+def draw_areaidld(x: HammerTool) -> bool:
+    x.append("create_shape -layer AREAIDLD -rect [get_db designs .core_bbox]")
+    return True
+
+def write_chiptop_netlist_with_pg_pins(x: HammerTool) -> bool:
+    x.append(f"write_netlist {x.output_netlist_filename} -top_module_first -top_module ChipTop -exclude_leaf_cells -phys -flat -exclude_insts_of_cells {{ sky130_fd_sc_hd__tap_1 sky130_fd_sc_hd__tap_2 sky130_fd_sc_hd__tapvgnd_1 sky130_fd_sc_hd__tapvpwrvgnd_1 sky130_fd_sc_hd__fill_1 sky130_fd_sc_hd__fill_2 sky130_fd_sc_hd__fill_4 sky130_fd_sc_hd__fill_8 sky130_fd_sc_hd__diode_2 sky130_ef_io__connect_vcchib_vccd_and_vswitch_vddio_and_vssio_vssa_vssd_slice_20um sky130_ef_io__com_bus_slice_10um sky130_ef_io__com_bus_slice_5um sky130_ef_io__com_bus_slice_1um sky130_ef_io__com_bus_slice_20um sky130_ef_io__corner_pad sky130_ef_io__connect_vcchib_vccd_and_vswitch_vddio_and_vssio_vssa_vssd_slice_20um }}")
+
+    return True
+
+def write_chiptop_drc_lvs_layout(x: HammerTool) -> bool:
+    map_file = get_or_else(
+        optional_map(x.get_gds_map_file(), lambda f: "-map_file {}".format(f)),
+        ""
+    )
+
+    gds_files = x.technology.read_libs([
+        hammer_tech.filters.gds_filter
+    ], hammer_tech.HammerTechnologyUtils.to_plain_item)
+    if x.hierarchical_mode.is_nonleaf_hierarchical():
+        ilm_gds = list(map(lambda ilm: ilm.gds, x.get_input_ilms()))
+        gds_files.extend(ilm_gds)
+
+    # ONLY DIFFERENCE FROM HAMMER'S DEFAULT WRITE GDS:
+    gds_files = list(filter(lambda x: "simple_por" not in x, gds_files))
+    gds_files.append("/tools/C/rohankumar/sky130/stac_tapeout/gds/simple_por_drc_lvs.gds")
+
+    merge_options = "-output_macros" if not x.get_setting("par.inputs.gds_merge") else "-uniquify_cell_names -merge {{ {} }}".format(
+        " ".join(gds_files)
+    )
+
+    unit = ""
+    if (x.get_setting("par.inputs.gds_precision_mode") == "manual"):
+        gds_precision = x.get_setting("par.inputs.gds_precision") or ""
+        valid_values = [100, 200, 1000, 2000, 10000, 20000]
+        if gds_precision in valid_values:
+            unit = "-unit %s" % gds_precision
+        else:
+            x.logger.error(
+                "par.inputs.gds_precision value of \"%s\" must be one of %s" %(
+                    gds_precision, ', '.join([str(x) for x in valid_values])));
+            return False
+
+    x.verbose_append(
+        "write_stream -mode ALL -format stream {map_file} {merge_options} {unit} {gds}".format(
+        map_file=map_file,
+        merge_options=merge_options,
+        gds=x.output_gds_filename.replace(".gds", "_drc_lvs.gds"),
+        unit=unit
+    ))
+    return True
+
+def enable_clock_antenna_insertion(x: HammerTool) -> bool:
+    x.append('set_db route_design_diode_insertion_for_clock_nets true')
     return True
 
 class Driver(CLIDriver):
@@ -36,11 +1573,81 @@ class Driver(CLIDriver):
             HammerTool.make_post_insertion_hook("init_environment", check_timing_intent),
             HammerTool.make_post_insertion_hook("init_environment", dont_touch),
             HammerTool.make_post_insertion_hook("init_environment", donttouch_iocells),
-            # HammerTool.make_pre_insertion_hook("syn_generic", flatten_analog_driver),
+            HammerTool.make_pre_insertion_hook("syn_generic", flatten_analog_driver),
             HammerTool.make_pre_insertion_hook("syn_generic", chiptop_dont_touch),
         ]
 
+    def get_extra_par_hooks(self) -> List[HammerToolHookAction]:
+        # existing step ordering: ucb.bar/hammer/hammer/par/innovus/__init__.py#L228 
+            # self.init_design,
+            # self.floorplan_design,
+            # self.place_bumps,
+            # self.place_tap_cells,
+            # self.power_straps,
+            # self.place_pins,
+            # self.place_opt_design,
+            # self.clock_tree,
+            # self.add_fillers
+            # self.route_opt_design
+            # self.write_regs
+            # self.design
+        return [
+            HammerTool.make_post_insertion_hook("init_design", set_routing_layers),
+            # sky130_innovus_settings()
+            HammerTool.make_post_insertion_hook("sky130_innovus_settings", enable_clock_antenna_insertion),
+            HammerTool.make_pre_insertion_hook("floorplan_design", par_design_effort),
+            
+            HammerTool.make_pre_insertion_hook("floorplan_design", set_die_snap_to_mfg_grid),
+            HammerTool.make_pre_insertion_hook("floorplan_design", chiptop_dont_route),
+            HammerTool.make_pre_insertion_hook("floorplan_design", chiptop_dont_touch),
+            
+            HammerTool.make_post_insertion_hook("floorplan_design", efabless_ring_io),
+            
+            HammerTool.make_post_insertion_hook("efabless_ring_io", place_sram_macros),
+            HammerTool.make_post_insertion_hook("place_sram_macros", block_sram_escape_corridors_from_pg),
+            
+            HammerTool.make_post_insertion_hook("block_sram_escape_corridors_from_pg", place_reset_level_shifter),
+            HammerTool.make_post_insertion_hook("place_reset_level_shifter", place_por),
+            
+            HammerTool.make_removal_hook("place_bumps"),
+            
+            # TODO(jimfang) do we still need place_tap_cells if on sky130?
+            
+            HammerTool.make_pre_insertion_hook("place_pins", connect_core_stripes_to_ring), # same as post_insertion_hook("power_straps")
+            
+            HammerTool.make_post_insertion_hook("connect_core_stripes_to_ring", route_reset_level_shifter_power),
+            HammerTool.make_post_insertion_hook("connect_core_stripes_to_ring", route_por_power),
+            
+            HammerTool.make_post_insertion_hook("place_pins", assign_chiptop_io_pins),
+            HammerTool.make_removal_hook("place_pins"), # done by assign_chiptop_io_pins()
+            
+            HammerTool.make_post_insertion_hook("place_opt_design", route_sram_pin_escapes),
 
+            # move fillers step to after opt_design
+            HammerTool.make_removal_hook("add_fillers"),
+            HammerTool.make_post_insertion_hook("route_opt_design", add_fillers), # route_opt_design if > innovus 231, else opt_design
+
+            # add final signoff timing
+            # TODO: re-add once we care about timing (DRC/LVS sane)
+            # HammerTool.make_pre_insertion_hook("write_design", signoff_timing),
+
+            # # write final files
+            # HammerTool.make_post_insertion_hook("write_design", write_top_files),
+            
+            
+            
+            #HammerTool.make_pre_insertion_hook("power_straps", pll_power),
+
+            HammerTool.make_pre_insertion_hook("write_design", force_bias_pins_nets),
+            HammerTool.make_pre_insertion_hook("write_design", draw_areaidld),
+            #HammerTool.make_pre_insertion_hook("write_design", ofo_manual_edits),
+            HammerTool.make_post_insertion_hook("write_design", write_chiptop_netlist_with_pg_pins),
+            HammerTool.make_post_insertion_hook("write_design", write_chiptop_drc_lvs_layout),
+
+            # Not needed with manual CPF flow
+            HammerTool.make_removal_hook("sky130_connect_nets"),
+            HammerTool.make_removal_hook("sky130_connect_nets2"),
+        ]
 
 if __name__ == '__main__':
     Driver().main()

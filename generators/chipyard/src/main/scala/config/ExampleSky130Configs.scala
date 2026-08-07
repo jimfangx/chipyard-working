@@ -21,7 +21,7 @@ import testchipip.soc.{WithNoScratchpads, WithOffchipBus, WithOffchipBusClient}
 /** Shared Sky130 tapeout configuration, excluding the processor tile choice. */
 class SoCConfig extends Config(
   // TODO: Remove simulation collateral for the physical tapeout configuration.
-  new chipyard.sky130.WithVerilogDummySky130EFCaravelPOR ++
+  new chipyard.sky130.WithRealSky130EFCaravelPOR ++
   new chipyard.config.WithBroadcastManager ++
   new WithNoScratchpads ++
   new WithSerialTL(Seq(SerialTLParams(
@@ -41,7 +41,7 @@ class SoCConfig extends Config(
   new WithOffchipBusClient(MBUS) ++
   new WithOffchipBus ++
   new chipyard.sky130.WithSky130EFIOCells(sim = false) ++
-  new chipyard.sky130.WithSky130EFIOTotalCells(46) ++
+  new chipyard.sky130.WithSky130EFIOTotalCells(45) ++
   new WithExtMemSize(1L << 30) ++
   new WithCoherentBusTopology ++
   new chipyard.config.AbstractConfig)

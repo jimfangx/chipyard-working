@@ -56,6 +56,8 @@ vlsi.core.max_threads: 32
 
 technology.core.stackup: "sky130_scl"
 
+vlsi.technology.placement_site: "CoreSite"
+
 # Technology paths
 technology.sky130:
   sky130A: "/scratch/jfx/open-pdks/sky130/sky130A" # TODO(jimfang) bump to tools
@@ -79,6 +81,9 @@ technology.sky130:
   stdcell_library: "sky130_scl"
 
   caravel: "/scratch/jfx/caravel"
+
+  io_file: "./chip-sky130.io"
+  io_file_meta: prependlocal
 
 # SRAM Compiler compiler options
 vlsi.core.sram_generator_tool: "hammer.technology.sky130.sram_compiler"
@@ -113,15 +118,22 @@ par.generate_power_straps_options:
     power_utilization_met5: 0.5
 
 # General Hammer Inputs
+vlsi.inputs:
+  power_spec_type: cpf
+  power_spec_mode: manual
+  power_spec_contents_meta: transclude
+  power_spec_contents: ./sky130.cpf
+  supplies:
+    # Hammer should only know about the main core power nets
+    # Other pins/nets/domains handled in CPF
+    power:
+      - {name: "VDD", pins: ["VDD"]}
+    ground:
+      - {name: "VSS", pins: ["VSS"]}
+    VDD: "1.8 V"
+    GND: "0 V"
 
-# Hammer will auto-generate a CPF for simple power designs; see hammer/src/hammer-vlsi/defaults.yml for more info
-vlsi.inputs.power_spec_mode: "auto"
-vlsi.inputs.power_spec_type: "cpf"
-vlsi.inputs.supplies:
-  power: {name: "VDD", pins: ["VDD"]}
-  ground: {name: "VSS", pins: ["VSS"]}
-  VDD: "1.8 V"
-  GND: "0 V"
+vlsi.inputs.top_module: ChipTop
 
 # Specify clock signals
 vlsi.inputs.clocks: [
@@ -187,6 +199,10 @@ vlsi.inputs.dont_use_mode: append
 vlsi.inputs.dont_use_list_meta: append
 vlsi.inputs.dont_use_list:
   - sky130_fd_sc_hvl__*
+
+vlsi.inputs.decaps:
+  - target: "density"
+    density: 0.15
 
 # ====================================================================
 # Sky130 IO Cell Collat

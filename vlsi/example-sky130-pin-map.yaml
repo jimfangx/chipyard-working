@@ -1,0 +1,50 @@
+pins:
+  S2: reset
+  S3: clock
+  S5: jtag_TCK
+  S6: jtag_TMS
+  S7: jtag_TDI
+  S8: jtag_TDO
+  S9: jtag_reset
+  N9: clock_tap
+  N11: custom_boot
+  W10: uart_0_txd
+  W11: uart_0_rxd
+  E20: serial_tl_0_clock_in
+  W19: serial_tl_0_in_valid
+  W18: serial_tl_0_out_bits_phit
+  W17: serial_tl_0_in_bits_phit
+  W16: serial_tl_0_in_ready
+  W15: serial_tl_0_out_valid
+  W14: serial_tl_0_out_ready
+extra_insts:
+  # DO NOT REMOVE; a connect slice must not be placed immeidately to the local right of a *_clamped3_pad. If these aren't here to place the ordinary non connect fillers, then Innovus will drop a connect filler at the location; 
+  # see: https://hammer-vlsi.readthedocs.io/en/latest/Technology/Sky130.html#io-library
+  bottom:
+    - name: IO_FILLER_RESET_TAP
+      offset: 738 # slice immediately next to the resetb
+      cell: sky130_ef_io__com_bus_slice_20um
+    - name: IO_FILLER_MANUAL_S_2
+      offset: 1186
+      cell: sky130_ef_io__com_bus_slice_20um
+    - name: IO_FILLER_MANUAL_S_3
+      offset: 3264 # position this right below the left edge of the por (vss1v8, vdd3v3, vss3v3 connection side). the por should be upside down such that the vss1v8, vdd3v3, vss3v3 ports on the por is closest to the io ring 
+      # TODO(jimfang) paste link to image or add image in docs abt this
+      cell: sky130_ef_io__com_bus_slice_20um
+  left:
+    - name: IO_FILLER_MANUAL_W_1 # W22 R
+      offset: 415
+      cell: sky130_ef_io__com_bus_slice_20um
+    - name: IO_FILLER_MANUAL_W_2 # W13 R
+      offset: 2279
+      cell: sky130_ef_io__com_bus_slice_20um
+    - name: IO_FILLER_MANUAL_W_3 # W2 R
+      offset: 4635
+      cell: sky130_ef_io__com_bus_slice_20um
+  right:
+    - name: IO_FILLER_MANUAL_E_1 # E2 R
+      offset: 4518
+      cell: sky130_ef_io__com_bus_slice_20um
+    - name: IO_FILLER_MANUAL_E_2 # E12 R
+      offset: 2279
+      cell: sky130_ef_io__com_bus_slice_20um
