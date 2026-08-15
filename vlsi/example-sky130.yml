@@ -99,23 +99,33 @@ par.generate_power_straps_options:
   by_tracks:
     generate_rail_layer: false # sky130_scl has a hook for rails
     strap_layers:
+      - met2
+      - met3
       - met4
       - met5
     pin_layers:
       - met5
     blockage_spacing_met2: 4.0
+    blockage_spacing_met3: 2.0
     blockage_spacing_met4: 2.0
+    blockage_spacing_met5: 2.0
+
+    track_spacing: 0
+
+    track_start: 10
+    track_start: 12
+    track_start: 16
+    track_start_met5: 1
+  
     track_width: 2
     track_width_met2: 2
     track_width_met3: 2
     track_width_met4: 2
     track_width_met5: 2
-    track_spacing: 5
-    track_start: 10
-    track_start_met5: 1
-    power_utilization: 0.4
-    power_utilization_met4: 0.4
-    power_utilization_met5: 0.5
+    power_utilization_met2: 0.05
+    power_utilization_met3: 0.15
+    power_utilization_met4: 0.25
+    power_utilization_met5: 0.4
 
 # General Hammer Inputs
 vlsi.inputs:
@@ -135,6 +145,11 @@ vlsi.inputs:
 
 vlsi.inputs.top_module: ChipTop
 
+vlsi.inputs.custom_sdc_constraints: [
+    # "set_false_path -from reset -to system/chipyard_prcictrl_domain/clockDivider/divider_io_resetAsync_stretcher/resetout/reg_0_reg/CK"
+    "set_false_path -from reset"
+  ]
+
 # Specify clock signals
 vlsi.inputs.clocks: [
   {name: "clock", period: "200ns", uncertainty: "0.1ns"}
@@ -142,7 +157,7 @@ vlsi.inputs.clocks: [
 
 # Placement Constraints
 vlsi.inputs.placement_constraints:
-  - path: "ChipTop"
+  - path: ChipTop
     type: toplevel
     x: 0
     y: 0
@@ -265,10 +280,10 @@ vlsi.technology.extra_libraries:
   #     gds_file: /tools/C/rohankumar/sky130/stac_tapeout/gds/sky130_ef_io_with_overlay.gds
   #     lef_file: ${technology.sky130.sky130A}/libs.ref/sky130_fd_io/lef/sky130_ef_io.lef
   #     spice_file: /tools/C/rahulkumar/sky130/io_lvs/sky130_ef_io.spice
-  # - library:
-  #     gds_file: /tools/C/rohankumar/sky130/stac_tapeout/gds/sky130_ef_io__connect_vcchib_vccd_and_vswitch_vddio_and_vssio_vssa_vssd_slice_20um.gds
-  #     lef_file: /tools/C/rohankumar/sky130/stac_tapeout/gds/sky130_ef_io__connect_vcchib_vccd_and_vswitch_vddio_and_vssio_vssa_vssd_slice_20um.lef
-  #     spice_file: /tools/C/rahulkumar/sky130/io_lvs/sky130_ef_io.spice
+  - library:
+      gds_file: /scratch/jfx/open-pdks/sky130/custom/sky130_fd_io/gds/sky130_ef_io__connect_vcchib_vccd_and_vswitch_vddio_and_vssio_vssa_vssd_slice_20um.gds
+      lef_file: /scratch/jfx/open-pdks/sky130/custom/sky130_fd_io/lef/sky130_ef_io__connect_vcchib_vccd_and_vswitch_vddio_and_vssio_vssa_vssd_slice_20um.lef
+      spice_file: /scratch/jfx/open-pdks/sky130/custom/sky130_fd_io/cdl/sky130_ef_io.cdl
   # - library:
   #     gds_file: /tools/C/rohankumar/sky130/stac_tapeout/gds/sky130_ef_io__analog_pad_esd2.gds
   #     lef_file: /tools/C/rohankumar/sky130/stac_tapeout/sky130_ef_io__analog_pad_esd2.lef

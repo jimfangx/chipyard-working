@@ -76,27 +76,27 @@
     (inst
       orientation = R0
       offset = 381
-      name = "iocell_nc_0/iocell"
+      name = "nc_0/iocell"
     )
     (inst
       orientation = R0
       offset = 638
-      name = "iocell_nc_1/iocell"
+      name = "nc_1/iocell"
     )
     (inst
       orientation = R0
       offset = 895
-      name = "iocell_nc_2/iocell"
+      name = "nc_2/iocell"
     )
     (inst
       orientation = R0
       offset = 1152
-      name = "iocell_nc_3/iocell"
+      name = "nc_3/iocell"
     )
     (inst
       orientation = R0
       offset = 1410
-      name = "iocell_nc_4/iocell"
+      name = "nc_4/iocell"
     )
     (inst
       orientation = R0
@@ -107,12 +107,12 @@
     (inst
       orientation = R0
       offset = 1919
-      name = "iocell_nc_5/iocell"
+      name = "nc_5/iocell"
     )
     (inst
       orientation = R0
       offset = 2364
-      name = "iocell_nc_6/iocell"
+      name = "nc_6/iocell"
     )
     (inst
       orientation = R0
@@ -143,32 +143,32 @@
     (inst
       orientation = R270
       offset = 726
-      name = "iocell_nc_7/iocell"
+      name = "nc_7/iocell"
     )
     (inst
       orientation = R270
       offset = 951
-      name = "iocell_nc_8/iocell"
+      name = "nc_8/iocell"
     )
     (inst
       orientation = R270
       offset = 1177
-      name = "iocell_nc_9/iocell"
+      name = "nc_9/iocell"
     )
     (inst
       orientation = R270
       offset = 1402
-      name = "iocell_nc_10/iocell"
+      name = "nc_10/iocell"
     )
     (inst
       orientation = R270
       offset = 1627
-      name = "iocell_nc_11/iocell"
+      name = "nc_11/iocell"
     )
     (inst
       orientation = R270
       offset = 1853
-      name = "iocell_nc_12/iocell"
+      name = "nc_12/iocell"
     )
     (inst
       orientation = R270
@@ -191,32 +191,32 @@
     (inst
       orientation = R270
       offset = 2739
-      name = "iocell_nc_13/iocell"
+      name = "nc_13/iocell"
     )
     (inst
       orientation = R270
       offset = 2965
-      name = "iocell_nc_14/iocell"
+      name = "nc_14/iocell"
     )
     (inst
       orientation = R270
       offset = 3190
-      name = "iocell_nc_15/iocell"
+      name = "nc_15/iocell"
     )
     (inst
       orientation = R270
       offset = 3416
-      name = "iocell_nc_16/iocell"
+      name = "nc_16/iocell"
     )
     (inst
       orientation = R270
       offset = 3641
-      name = "iocell_nc_17/iocell"
+      name = "nc_17/iocell"
     )
     (inst
       orientation = R270
       offset = 3871
-      name = "iocell_nc_18/iocell"
+      name = "nc_18/iocell"
     )
     (inst
       orientation = R270
@@ -227,7 +227,7 @@
     (inst
       orientation = R270
       offset = 4312
-      name = "iocell_nc_19/iocell"
+      name = "nc_19/iocell"
     )
     (inst
       orientation = R270
@@ -238,7 +238,7 @@
     (inst
       orientation = R270
       offset = 4758
-      name = "iocell_nc_20/iocell"
+      name = "nc_20/iocell"
     )
     (inst
       orientation = R270
@@ -406,27 +406,27 @@
     (inst
       orientation = R90
       offset = 3058
-      name = "iocell_nc_21/iocell"
+      name = "nc_21/iocell"
     )
     (inst
       orientation = R90
       offset = 3274
-      name = "iocell_nc_22/iocell"
+      name = "nc_22/iocell"
     )
     (inst
       orientation = R90
       offset = 3490
-      name = "iocell_nc_23/iocell"
+      name = "nc_23/iocell"
     )
     (inst
       orientation = R90
       offset = 3706
-      name = "iocell_nc_24/iocell"
+      name = "nc_24/iocell"
     )
     (inst
       orientation = R90
       offset = 3922
-      name = "iocell_nc_25/iocell"
+      name = "nc_25/iocell"
     )
     (inst
       orientation = R90
@@ -449,7 +449,7 @@
     (inst
       orientation = R90
       offset = 4771
-      name = "iocell_nc_26/iocell"
+      name = "nc_26/iocell"
     )
     (inst
       orientation = R90

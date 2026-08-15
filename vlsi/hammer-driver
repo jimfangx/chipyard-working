@@ -69,13 +69,101 @@ def chiptop_dont_touch(x: HammerTool) -> bool:
 
 # ============== PAR HOOKS =============
 
+# def set_routing_layers(x: HammerTool) -> bool:
+#     # cadence std cells use met1 for pins
+#     x.append("""
+# set_db design_bottom_routing_layer met2
+# set_db design_top_routing_layer met5
+#     """)
+#     return True 
+
 def set_routing_layers(x: HammerTool) -> bool:
     # cadence std cells use met1 for pins
     x.append("""
-set_db design_bottom_routing_layer met2
+set_db design_bottom_routing_layer met1
 set_db design_top_routing_layer met5
+
+##############################################################
+# Soft routing preference for ordinary signal nets.
+#
+# Keep the result as DB objects. Do NOT convert to .name and
+# pass 100k+ strings through set_route_attributes.
+##############################################################
+
+set signal_nets [get_db nets -if {
+    .is_power == false &&
+    .is_ground == false
+}]
+
+puts "##### Applying M2-M5 preference to [llength $signal_nets] signal nets"
+
+set_route_attributes \
+    -nets * \
+    -bottom_preferred_routing_layer 2 \
+    -top_preferred_routing_layer 5 \
+    -preferred_routing_layer_effort high
+
+puts "##### Finished M2-M5 preferred-routing setup"
     """)
     return True 
+
+# TODO(jimfang) if setting without io cells, this will need to set the global routing layer bottom to met2
+# def set_routing_layers(x: HammerTool) -> bool:
+#     x.append(r'''
+#     ##############################################################
+#     # M1 routing policy
+#     #
+#     # Outside core:
+#     #   - normal signal routing may use M1
+#     #
+#     # Inside/near core:
+#     #   - no automatically-routed signal wires on M1
+#     #   - PG routing/straps are allowed on M1
+#     #   - fixed/manual SRAM M1 escape shapes are allowed
+#     #   - cell M1 pins/shapes/rails are unaffected
+#     #
+#     # This is a ROUTING blockage only. It does not constrain
+#     # standard-cell placement.
+#     ##############################################################
+
+#     puts "##### restrict_met1_to_outside_core: allow M1 globally"
+#     set_db design_bottom_routing_layer met1
+
+#     # Common UI core bbox:
+#     # {llx lly urx ury}
+#     lassign [lindex [get_db current_design .core_bbox] 0] \
+#         core_llx core_lly core_urx core_ury
+
+#     # Push the M1 signal-routing prohibition slightly outside the
+#     # core so IO routes transition M1 -> M2 before reaching it.
+#     set m1_guard 2.0
+
+#     set m1_block_bbox [list \
+#         [expr {$core_llx - $m1_guard}] \
+#         [expr {$core_lly - $m1_guard}] \
+#         [expr {$core_urx + $m1_guard}] \
+#         [expr {$core_ury + $m1_guard}] \
+#     ]
+
+#     puts "##### core bbox           = [get_db current_design .core_bbox]"
+#     puts "##### M1 signal block bbox = $m1_block_bbox"
+
+#     ##############################################################
+#     # Block NORMAL SIGNAL routing on M1.
+#     #
+#     # -except_pg_nets is important:
+#     #   VDD/VSS special routing, rails, straps, etc. may still
+#     #   occupy M1 inside the core.
+#     ##############################################################
+#     create_route_blockage \
+#         -name core_met1_signal_block \
+#         -layers {met1} \
+#         -except_pg_nets \
+#         -rects [list $m1_block_bbox]
+
+#     puts "##### restrict_met1_to_outside_core: done"
+#     ''')
+#     return True
 
 def connect_core_stripes_to_ring(x: HammerTool) -> bool:
     # connect floating stripes on met4/met5 in core area to power ring via layers met3-met5 (permissive), no jogging allowed
@@ -109,7 +197,11 @@ def par_design_effort(x: HammerTool) -> bool:
 # should already be done in sky130/__init__.py # sky130_innovus_settings()
 # TODO(jimfang) is this still needed? remove if not;
 def set_die_snap_to_mfg_grid(x: HammerTool) -> bool:
-    x.append('set_db floorplan_snap_die_grid manufacturing')
+    x.append('''
+            set_db floorplan_snap_die_grid manufacturing
+            set_db floorplan_snap_core_grid manufacturing
+            set_db floorplan_snap_all_corners_to_grid true
+             ''')
     return True
 
 def chiptop_dont_route(x: HammerTool) -> bool:
@@ -143,15 +235,19 @@ def efabless_ring_io(ht: HammerTool) -> bool:
     # VCCHIB  ↔ VCCD
     # VSWITCH ↔ VDDIO
     # VSSIO   ↔ VSSA ↔ VSSD
+    # add_io_fillers -prefix IO_FILLER -io_ring 1 -cells $io_fillers -side top -filler_orient r0
+    # add_io_fillers -prefix IO_FILLER -io_ring 1 -cells $io_fillers -side right -filler_orient r270
+    # add_io_fillers -prefix IO_FILLER -io_ring 1 -cells $io_fillers -side bottom -filler_orient r180
+    # add_io_fillers -prefix IO_FILLER -io_ring 1 -cells $io_fillers -side left -filler_orient r90
     ht.append('''
 # IO fillers
 # set io_fillers {sky130_ef_io__com_bus_slice_20um sky130_ef_io__com_bus_slice_10um sky130_ef_io__com_bus_slice_5um sky130_ef_io__com_bus_slice_1um}
 
 set io_fillers {sky130_ef_io__connect_vcchib_vccd_and_vswitch_vddio_and_vssio_vssa_vssd_slice_20um sky130_ef_io__com_bus_slice_10um sky130_ef_io__com_bus_slice_5um sky130_ef_io__com_bus_slice_1um}
-add_io_fillers -prefix IO_FILLER -io_ring 1 -cells $io_fillers -side top -filler_orient r0
-add_io_fillers -prefix IO_FILLER -io_ring 1 -cells $io_fillers -side right -filler_orient r270
-add_io_fillers -prefix IO_FILLER -io_ring 1 -cells $io_fillers -side bottom -filler_orient r180
-add_io_fillers -prefix IO_FILLER -io_ring 1 -cells $io_fillers -side left -filler_orient r90
+add_io_fillers -prefix IO_FILLER -io_ring 1 -cells $io_fillers -side top -filler_orient r180
+add_io_fillers -prefix IO_FILLER -io_ring 1 -cells $io_fillers -side right -filler_orient r90
+add_io_fillers -prefix IO_FILLER -io_ring 1 -cells $io_fillers -side bottom -filler_orient r0
+add_io_fillers -prefix IO_FILLER -io_ring 1 -cells $io_fillers -side left -filler_orient r270
 # Fix placement
 set io_filler_insts [get_db insts IO_FILLER_*]
 set_db $io_filler_insts .place_status fixed
@@ -236,6 +332,7 @@ set_dont_touch [get_db [get_db pins -if {.name == *TIE*ESD}] .net]
 # ''')
 #     return True
 
+# TODO(jimfang) this placed the LS at 745.18 201.42 - might be on top of the 20µm slice filler
 def place_reset_level_shifter(x: HammerTool) -> bool:
     x.append(r'''
 set tap [get_db insts IO_FILLER_RESET_TAP]
@@ -253,15 +350,21 @@ if {$ls eq ""} {
 # using its physical bbox to determine its width.
 set_db $ls .orient r0
 
-# Common UI instance bbox:
-#   {lower_left_x lower_left_y upper_right_x upper_right_y}
-lassign [get_db $tap .bbox] \
-    tap_llx tap_lly tap_urx tap_ury
+# Common UI bbox format:
+#   {{lower_left_x lower_left_y} {upper_right_x upper_right_y}}
 
-lassign [get_db $ls .bbox] \
-    ls_llx ls_lly ls_urx ls_ury
+set tap_bbox [lindex [get_db $tap .bbox] 0]
+lassign $tap_bbox tap_llx tap_lly tap_urx tap_ury
 
-set ls_width [expr {$ls_urx - $ls_llx}]
+puts "Reset cell bbox:"
+puts "  ll = ($tap_llx, $tap_lly)"
+puts "  ur = ($tap_urx, $tap_ury)"
+
+# from sky130_fd_sc_hvl.lef
+set ls_width 8.160
+set ls_height 8.140
+
+puts "Reset LS master size: ${ls_width} x ${ls_height}"
 
 # Tune only these values.
 # 1.260 and 3.455 reproduce the placement from the old DEF.
@@ -288,6 +391,7 @@ puts "Reset LS bbox: [get_db $ls .bbox]"
 ''')
     return True
 
+# TODO(jimfang) last add_pg_vias failed to find legal location
 def route_reset_level_shifter_power(x: HammerTool) -> bool:
     x.append(r'''
 set tap [get_db insts IO_FILLER_RESET_TAP]
@@ -309,10 +413,14 @@ if {$tap eq "" || $ls eq ""} {
 
 # Common UI bbox format:
 #   {lower_left_x lower_left_y upper_right_x upper_right_y}
-set tap_bbox [get_db $tap .bbox]
+set tap_bbox [lindex [get_db $tap .bbox] 0]
 lassign $tap_bbox tap_llx tap_lly tap_urx tap_ury
 
-set ls_location [get_db $ls .location]
+puts "Reset cell bbox:"
+puts "  ll = ($tap_llx, $tap_lly)"
+puts "  ur = ($tap_urx, $tap_ury)"
+
+set ls_location [lindex [get_db $ls .location] 0]
 lassign $ls_location ls_x ls_y
 
 puts "Tap bbox:   $tap_bbox"
@@ -462,7 +570,7 @@ puts "Completed translated LS power-routing template"
 
 
 
-
+# TODO(jimfang) this might be too low and run into the vss/vdd power ring
 def place_por(ht: HammerTool) -> bool:
     """
     Place the logical simple_por instance at the lower-right corner of the
@@ -634,7 +742,7 @@ if {[get_db $por_obj .orient] ne "mx"} {
         $por_inst [get_db $por_obj .orient]]
 }
 
-lassign [get_db $por_obj .location] por_x por_y
+lassign [lindex [get_db $por_obj .location] 0] por_x por_y
 
 puts [format \
     "route_por_power: PoR origin={%.3f %.3f}" \
@@ -1034,7 +1142,7 @@ def place_sram_macros(x: HammerTool) -> bool:
         # Remove only temporary standard-cell placement.
         # set std_insts [get_db insts -if {{!.is_macro && .base_cell.base_class == core}}]
         # unplace_obj -insts $std_insts
-        unplace_obj -insts
+        # unplace_obj -insts
 
         check_floorplan -out_file post_macro_place_fp_check.rpt
 
@@ -1074,160 +1182,235 @@ def place_sram_macros(x: HammerTool) -> bool:
 
     return True
 
+# TODO(jimfang): old, remove, old as of Aug 14, 9:12
+# def block_sram_escape_corridors_from_pg(x: HammerTool) -> bool:
+#     # creates an M2-only, PG-only blockage in the external halo on only the sides containing SRAM signal pins.
+
+#     x.append(r'''
+#         ##############################################################
+#         # Reserve SRAM M2 escape corridors from PG routing.
+#         #
+#         # - Blocks PG nets only.
+#         # - Blocks met2 only.
+#         # - Excludes the SRAM bbox.
+#         # - Covers only halo sides containing signal pins.
+#         ##############################################################
+
+#         set pin_margin [expr {2.0 * [get_db [get_db layers met2] .width]}]
+#         set block_index 0
+
+#         foreach inst [get_db insts -if {
+#     .base_cell.name == *sram22*
+# }] {
+#     # SRAM bbox.
+#     set ix1 [get_db $inst .bbox.ll.x]
+#     set iy1 [get_db $inst .bbox.ll.y]
+#     set ix2 [get_db $inst .bbox.ur.x]
+#     set iy2 [get_db $inst .bbox.ur.y]
+
+#     # Placement halo bbox.
+#     set hx1 [get_db $inst .place_halo_bbox.ll.x]
+#     set hy1 [get_db $inst .place_halo_bbox.ll.y]
+#     set hx2 [get_db $inst .place_halo_bbox.ur.x]
+#     set hy2 [get_db $inst .place_halo_bbox.ur.y]
+
+#     array set edge_used {
+#         left   0
+#         right  0
+#         bottom 0
+#         top    0
+#     }
+
+#     array set span_lo {
+#         left   1.0e30
+#         right  1.0e30
+#         bottom 1.0e30
+#         top    1.0e30
+#     }
+
+#     array set span_hi {
+#         left   -1.0e30
+#         right  -1.0e30
+#         bottom -1.0e30
+#         top    -1.0e30
+#     }
+
+#     # Determine which placed SRAM edges contain signal pins.
+#     foreach pin [get_db $inst .pins] {
+#         set net [get_db $pin .net]
+
+#         if {$net eq ""} {
+#             continue
+#         }
+
+#         if {[get_db $net .is_power] || [get_db $net .is_ground]} {
+#             continue
+#         }
+
+#         # Query point components directly.
+#         set px [get_db $pin .location.x]
+#         set py [get_db $pin .location.y]
+
+#         # A logical pin may not have a usable physical location.
+#         if {![string is double -strict $px] ||
+#             ![string is double -strict $py]} {
+#             puts "WARNING: skipping pin [get_db $pin .name]: location=<$px,$py>"
+#             continue
+#         }
+
+#         set edge left
+#         set distance [expr {abs($px - $ix1)}]
+
+#         set d [expr {abs($px - $ix2)}]
+#         if {$d < $distance} {
+#             set edge right
+#             set distance $d
+#         }
+
+#         set d [expr {abs($py - $iy1)}]
+#         if {$d < $distance} {
+#             set edge bottom
+#             set distance $d
+#         }
+
+#         set d [expr {abs($py - $iy2)}]
+#         if {$d < $distance} {
+#             set edge top
+#             set distance $d
+#         }
+
+#         if {$edge eq "left" || $edge eq "right"} {
+#             set position $py
+#         } else {
+#             set position $px
+#         }
+
+#         set edge_used($edge) 1
+
+#         if {$position < $span_lo($edge)} {
+#             set span_lo($edge) $position
+#         }
+
+#         if {$position > $span_hi($edge)} {
+#             set span_hi($edge) $position
+#         }
+#     }
+
+#     set rects {}
+
+#     if {$edge_used(left)} {
+#         set y1 [expr {max($hy1, $span_lo(left) - $pin_margin)}]
+#         set y2 [expr {min($hy2, $span_hi(left) + $pin_margin)}]
+#         lappend rects [list $hx1 $y1 $ix1 $y2]
+#     }
+
+#     if {$edge_used(right)} {
+#         set y1 [expr {max($hy1, $span_lo(right) - $pin_margin)}]
+#         set y2 [expr {min($hy2, $span_hi(right) + $pin_margin)}]
+#         lappend rects [list $ix2 $y1 $hx2 $y2]
+#     }
+
+#     if {$edge_used(bottom)} {
+#         set x1 [expr {max($hx1, $span_lo(bottom) - $pin_margin)}]
+#         set x2 [expr {min($hx2, $span_hi(bottom) + $pin_margin)}]
+#         lappend rects [list $x1 $hy1 $x2 $iy1]
+#     }
+
+#     if {$edge_used(top)} {
+#         set x1 [expr {max($hx1, $span_lo(top) - $pin_margin)}]
+#         set x2 [expr {min($hx2, $span_hi(top) + $pin_margin)}]
+#         lappend rects [list $x1 $iy2 $x2 $hy2]
+#     }
+
+#     if {[llength $rects] > 0} {
+#         create_route_blockage \
+#             -name sram_m2_pg_escape_$block_index \
+#             -pg_nets \
+#             -layers {met2} \
+#             -rects $rects
+
+#         incr block_index
+#     }
+# }
+
+#         puts "block_sram_escape_corridors_from_pg: created $block_index blockage(s)"
+
+#         ##############################################################
+#     ''')
+
+#     return True
+
+
 def block_sram_escape_corridors_from_pg(x: HammerTool) -> bool:
-    # creates an M2-only, PG-only blockage in the external halo on only the sides containing SRAM signal pins.
-
     x.append(r'''
-        ##############################################################
-        # Reserve SRAM M2 escape corridors from PG routing.
-        #
-        # - Blocks PG nets only.
-        # - Blocks met2 only.
-        # - Excludes the SRAM bbox.
-        # - Covers only halo sides containing signal pins.
-        ##############################################################
+##############################################################
+# Reserve the full SRAM placement halo from low-layer PG.
+#
+# - PG nets only: signal routing remains allowed.
+# - Blocks met1 and met2.
+# - Covers the entire placement halo around each SRAM.
+# - Excludes the SRAM bbox itself.
+# - met3 and above are unaffected.
+##############################################################
 
-        set pin_margin [expr {2.0 * [get_db [get_db layers met2] .width]}]
-        set block_index 0
+set block_index 0
 
-        foreach inst [get_db insts -if {
+foreach inst [get_db insts -if {
     .base_cell.name == *sram22*
 }] {
+    set inst_name [get_db $inst .name]
+
     # SRAM bbox.
     set ix1 [get_db $inst .bbox.ll.x]
     set iy1 [get_db $inst .bbox.ll.y]
     set ix2 [get_db $inst .bbox.ur.x]
     set iy2 [get_db $inst .bbox.ur.y]
 
-    # Placement halo bbox.
+    # Existing placement halo bbox.
     set hx1 [get_db $inst .place_halo_bbox.ll.x]
     set hy1 [get_db $inst .place_halo_bbox.ll.y]
     set hx2 [get_db $inst .place_halo_bbox.ur.x]
     set hy2 [get_db $inst .place_halo_bbox.ur.y]
 
-    array set edge_used {
-        left   0
-        right  0
-        bottom 0
-        top    0
+    if {$hx1 eq "" || $hy1 eq "" || $hx2 eq "" || $hy2 eq ""} {
+        error "SRAM '$inst_name' does not have a placement halo"
     }
 
-    array set span_lo {
-        left   1.0e30
-        right  1.0e30
-        bottom 1.0e30
-        top    1.0e30
-    }
+    ##############################################################
+    # Build the halo as four rectangles.
+    #
+    # Left/right cover the complete halo height.
+    # Bottom/top fill only the width directly below/above the SRAM.
+    #
+    # This avoids covering the SRAM bbox itself.
+    ##############################################################
 
-    array set span_hi {
-        left   -1.0e30
-        right  -1.0e30
-        bottom -1.0e30
-        top    -1.0e30
-    }
+    set rects [list \
+        [list $hx1 $hy1 $ix1 $hy2] \
+        [list $ix2 $hy1 $hx2 $hy2] \
+        [list $ix1 $hy1 $ix2 $iy1] \
+        [list $ix1 $iy2 $ix2 $hy2] \
+    ]
 
-    # Determine which placed SRAM edges contain signal pins.
-    foreach pin [get_db $inst .pins] {
-        set net [get_db $pin .net]
+    create_route_blockage \
+        -name sram_lowmetal_pg_halo_$block_index \
+        -pg_nets \
+        -layers {met1 met2} \
+        -rects $rects
 
-        if {$net eq ""} {
-            continue
-        }
+    puts "SRAM low-metal PG blockage:"
+    puts "  instance: $inst_name"
+    puts "  SRAM bbox: {$ix1 $iy1 $ix2 $iy2}"
+    puts "  halo bbox: {$hx1 $hy1 $hx2 $hy2}"
+    puts "  layers: {met1 met2}"
+    puts "  rectangles: $rects"
 
-        if {[get_db $net .is_power] || [get_db $net .is_ground]} {
-            continue
-        }
-
-        # Query point components directly.
-        set px [get_db $pin .location.x]
-        set py [get_db $pin .location.y]
-
-        # A logical pin may not have a usable physical location.
-        if {![string is double -strict $px] ||
-            ![string is double -strict $py]} {
-            puts "WARNING: skipping pin [get_db $pin .name]: location=<$px,$py>"
-            continue
-        }
-
-        set edge left
-        set distance [expr {abs($px - $ix1)}]
-
-        set d [expr {abs($px - $ix2)}]
-        if {$d < $distance} {
-            set edge right
-            set distance $d
-        }
-
-        set d [expr {abs($py - $iy1)}]
-        if {$d < $distance} {
-            set edge bottom
-            set distance $d
-        }
-
-        set d [expr {abs($py - $iy2)}]
-        if {$d < $distance} {
-            set edge top
-            set distance $d
-        }
-
-        if {$edge eq "left" || $edge eq "right"} {
-            set position $py
-        } else {
-            set position $px
-        }
-
-        set edge_used($edge) 1
-
-        if {$position < $span_lo($edge)} {
-            set span_lo($edge) $position
-        }
-
-        if {$position > $span_hi($edge)} {
-            set span_hi($edge) $position
-        }
-    }
-
-    set rects {}
-
-    if {$edge_used(left)} {
-        set y1 [expr {max($hy1, $span_lo(left) - $pin_margin)}]
-        set y2 [expr {min($hy2, $span_hi(left) + $pin_margin)}]
-        lappend rects [list $hx1 $y1 $ix1 $y2]
-    }
-
-    if {$edge_used(right)} {
-        set y1 [expr {max($hy1, $span_lo(right) - $pin_margin)}]
-        set y2 [expr {min($hy2, $span_hi(right) + $pin_margin)}]
-        lappend rects [list $ix2 $y1 $hx2 $y2]
-    }
-
-    if {$edge_used(bottom)} {
-        set x1 [expr {max($hx1, $span_lo(bottom) - $pin_margin)}]
-        set x2 [expr {min($hx2, $span_hi(bottom) + $pin_margin)}]
-        lappend rects [list $x1 $hy1 $x2 $iy1]
-    }
-
-    if {$edge_used(top)} {
-        set x1 [expr {max($hx1, $span_lo(top) - $pin_margin)}]
-        set x2 [expr {min($hx2, $span_hi(top) + $pin_margin)}]
-        lappend rects [list $x1 $iy2 $x2 $hy2]
-    }
-
-    if {[llength $rects] > 0} {
-        create_route_blockage \
-            -name sram_m2_pg_escape_$block_index \
-            -pg_nets \
-            -layers {met2} \
-            -rects $rects
-
-        incr block_index
-    }
+    incr block_index
 }
 
-        puts "block_sram_escape_corridors_from_pg: created $block_index blockage(s)"
-
-        ##############################################################
-    ''')
+puts "block_sram_escape_corridors_from_pg: created $block_index blockage(s)"
+##############################################################
+''')
 
     return True
 
@@ -1317,10 +1500,7 @@ def route_sram_pin_escapes(x: HammerTool) -> bool:
                 set local_rect [lindex \
                     [get_db $met1_shapes .shapes.rect] 0]
 
-                set pin_rect [lindex \
-                    [get_transform_shapes \
-                        -inst $inst \
-                        -local_pt $local_rect] 0]
+                set pin_rect [get_transform_shapes -inst $inst -local_pt $local_rect]
 
                 lassign $pin_rect px1 py1 px2 py2
 
@@ -1626,6 +1806,9 @@ class Driver(CLIDriver):
             # move fillers step to after opt_design
             HammerTool.make_removal_hook("add_fillers"),
             HammerTool.make_post_insertion_hook("route_opt_design", add_fillers), # route_opt_design if > innovus 231, else opt_design
+            
+            # TODO(jimfang) do we need this still? have there been a A/B study of ! - on/off?
+            # HammerTool.make_pre_insertion_hook("route_opt_design",set_routing_layers), # run again to catch new nets introduced by place_opt_design, CTS, buffer insertion, optimization
 
             # add final signoff timing
             # TODO: re-add once we care about timing (DRC/LVS sane)
