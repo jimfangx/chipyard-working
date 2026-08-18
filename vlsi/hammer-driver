@@ -674,15 +674,6 @@ create_place_halo \
     -insts $por_inst \
     -halo_deltas {10.120 0.000 0.000 11.350}
     
-# Keep PG straps out of the PoR halo on MET4 to prevent shorts; hopefully this prevents any MET3 wires that previously are used to go under the MET 5 VSS ring to connect the MET4 VDD straps to the MET5 VDD ring
-set por_obj [lindex [get_db insts $por_inst] 0]
-set por_pg_blockage_shape [get_db $por_obj .place_halo_polygon]
-
-if {$por_pg_blockage_shape eq ""} {
-    error "place_por: no place_halo_polygon found for PoR"
-}
-
-create_route_blockage -pg_nets -layers {met4} -polygon $por_pg_blockage_shape
 
 ########################################################################
 # Reproduce the routing halo from the DEF
@@ -1151,11 +1142,6 @@ def place_sram_macros(x: HammerTool) -> bool:
             set route_halo_top_layer met2
             set pg_blockage_layers {met1}
 
-            if {[string match "*icache_tag_array*" $sram_name]} {
-                set route_halo_top_layer met4
-                set pg_blockage_layers {met1 met2 met3}
-            }
-
             puts "place_sram_macros: protecting $sram_name"
             puts "  route halo:       met1 -> $route_halo_top_layer"
             puts "  route halo space: 2.0"
@@ -1282,6 +1268,9 @@ def place_sram_macros(x: HammerTool) -> bool:
             -align_range_ratio 1.0 \
             -min_space_to_core 41.40 \
             -forbidden_space_to_core 20.70 \
+            -min_space_to_macro 41.40 \
+            -forbidden_space_to_macro 20.70 \
+            -parallel_run_length 0.0 \
             -flip_macro_focus narrow_channel
 
         # create_pg_model_for_macro_place -file golden_pg_model.tcl
@@ -1899,15 +1888,95 @@ def repair_route_drcs(x: HammerTool) -> bool:
     x.append(r'''
         puts "##### Final routing DRC repair"
 
-        for {set pass 1} {$pass <= 2} {incr pass} {
-            puts "##### DRC repair pass $pass"
+        set max_passes 20
+
+        for {set pass 1} {$pass <= $max_passes} {incr pass} {
+            puts "##### DRC repair pass $pass / $max_passes"
+
             check_drc
-            delete_routes -regular_wire_with_drc
-            route_design
+
+            ##########################################################
+            # Count MET1 short markers only.
+            #
+            # Use both subtype and message so this is tolerant of
+            # whether Innovus reports the subtype as Short,
+            # Metal_Short, MetalShort, etc.
+            ##########################################################
+
+            set met1_short_count 0
+
+            foreach m [get_db markers] {
+                set layer_name [string tolower [get_db $m .layer.name]]
+
+                if {$layer_name ne "met1"} {
+                    continue
+                }
+
+                set subtype [string tolower [get_db $m .subtype]]
+                set message [string tolower [get_db $m .message]]
+
+                if {
+                    [string match "*short*" $subtype] ||
+                    [string match "*short*" $message]
+                } {
+                    incr met1_short_count
+                }
+            }
+
+            puts "##### MET1 short count after check_drc: $met1_short_count"
+
+            ##########################################################
+            # Stop immediately when MET1 is short-clean.
+            ##########################################################
+
+            if {$met1_short_count == 0} {
+                puts "##### MET1 shorts cleared after $pass pass(es)"
+                break
+            }
+
+            ##########################################################
+            # Otherwise remove regular routing involved in DRCs and
+            # let NanoRoute rebuild it.
+            ##########################################################
+
+            if {$pass < $max_passes} {
+                puts "##### Repairing routing: $met1_short_count MET1 short(s) remain"
+
+                delete_routes -regular_wire_with_drc
+                route_design
+            } else {
+                puts "##### WARNING: reached maximum of $max_passes passes with $met1_short_count MET1 short(s) remaining"
+            }
         }
+
+        ##############################################################
+        # Final verification
+        ##############################################################
 
         puts "##### Final DRC check"
         check_drc
+
+        set final_met1_short_count 0
+
+        foreach m [get_db markers] {
+            set layer_name [string tolower [get_db $m .layer.name]]
+
+            if {$layer_name ne "met1"} {
+                continue
+            }
+
+            set subtype [string tolower [get_db $m .subtype]]
+            set message [string tolower [get_db $m .message]]
+
+            if {
+                [string match "*short*" $subtype] ||
+                [string match "*short*" $message]
+            } {
+                incr final_met1_short_count
+            }
+        }
+
+        puts "##### FINAL MET1 SHORT COUNT: $final_met1_short_count"
     ''')
     return True
 
@@ -2016,6 +2085,8 @@ class Driver(CLIDriver):
             
             HammerTool.make_post_insertion_hook("place_reset_level_shifter", place_por),
             
+            HammerTool.make_post_insertion_hook("place_por", route_por_power),
+            
             HammerTool.make_removal_hook("place_bumps"),
             
             HammerTool.make_pre_insertion_hook("power_rail_straps_no_tapcells", unplace_std_cells_pre_power_straps),
@@ -2027,7 +2098,6 @@ class Driver(CLIDriver):
             HammerTool.make_pre_insertion_hook("place_pins", connect_core_stripes_to_ring), # same as post_insertion_hook("power_straps")
             
             HammerTool.make_post_insertion_hook("connect_core_stripes_to_ring", route_reset_level_shifter_power),
-            HammerTool.make_post_insertion_hook("connect_core_stripes_to_ring", route_por_power),
             
             HammerTool.make_post_insertion_hook("place_pins", assign_chiptop_io_pins),
             HammerTool.make_removal_hook("place_pins"), # done by assign_chiptop_io_pins()

@@ -12,11 +12,11 @@ par.innovus.design_flow_effort: "standard"
 par.inputs.gds_merge: true
 # Pegaus options, cadence pdk only has a pegasus deck
 vlsi.core.drc_tool: "hammer.drc.pegasus"
-drc.pegasus.version: "221"
-drc.pegasus.pegasus_bin: "/share/instsww/cadence/PEGASUS221/bin/pegasus"
+drc.pegasus.version: "231"
+drc.pegasus.pegasus_bin: "/tools/cadence/PEGASUS/PEGASUS231/bin/pegasus"
 vlsi.core.lvs_tool: "hammer.lvs.pegasus"
-lvs.pegasus.pegasus_bin: "/share/instsww/cadence/PEGASUS221/bin/pegasus"
-lvs.pegasus.version: "221"
+lvs.pegasus.pegasus_bin: "/tools/cadence/PEGASUS/PEGASUS231/bin/pegasus"
+lvs.pegasus.version: "231"
 # VCS options
 vlsi.core.sim_tool: "hammer.sim.vcs"
 sim.vcs.version: "T-2022.06-SP2-9"
@@ -68,10 +68,9 @@ technology.sky130:
   sky130_scl: "/tools/commercial/skywater/sky130_cds/LIB/sky130_scl_9T_0.1.2" # TODO(jimfang) - change before prod
   sram22_sky130_macros: "/scratch/jfx/sram22_sky130_macros" # amd 5 scratch for now
 
-  # todo(jimfang) can be removed?
-  drc_deck_sources: [
-    "$SKY130_CDS/Sky130_DRC/sky130_rev_0.0_2.10.drc.pvl",
-  ]
+  # Pegasus rule decks provided by the Cadence PDK release
+  drc_deck: "/scratch/jfx/sky130_release_0.1.0/Sky130_DRC/sky130_rev_0.0_2.12.drc.pvl"
+  lvs_deck: "/scratch/jfx/sky130_release_0.1.0/Sky130_LVS/sky130.lvs.v0.0_1.1.pvl"
 
   # this key is OPTIONAL, no NDA files will be used if it does not point to a valid path
   sky130_nda: "/path/to/skywater-src-nda"
