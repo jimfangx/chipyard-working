@@ -2035,6 +2035,24 @@ def enable_clock_antenna_insertion(x: HammerTool) -> bool:
     x.append('set_db route_design_diode_insertion_for_clock_nets true')
     return True
 
+# ============================================
+#               DRC HOOKS
+# ============================================
+
+def drc_blackboxes(x: HammerTool) -> bool:
+    modules = ['tdc_64']
+    if x.get_setting("vlsi.core.drc_tool")   == "hammer.drc.calibre" :
+        run_file = x.drc_run_file
+        with open(run_file, "a") as f:
+            for module in modules:
+                f.write(f"\nEXCLUDE CELL {module}")
+            f.write('\n')
+    return True
+
+def use_drc_lvs_gds(x: HammerTool) -> bool:
+    x.layout_file = x.layout_file.replace("ChipTop.gds", "ChipTop_drc_lvs.gds")
+    return True
+
 class Driver(CLIDriver):
     def get_extra_synthesis_hooks(self) -> List[HammerToolHookAction]:
         return [
@@ -2133,6 +2151,24 @@ class Driver(CLIDriver):
             HammerTool.make_removal_hook("sky130_connect_nets"),
             HammerTool.make_removal_hook("sky130_connect_nets2"),
         ]
+        
+    def get_extra_drc_hooks(self) -> List[HammerToolHookAction]:
+        # return []
+        # TODO: these are calibre specific, pegasus doesn't have this step name
+        return [
+            # HammerTool.make_removal_hook("pegasus_drc_blackbox_srams"),
+            HammerTool.make_removal_hook("pegasus_drc_blackbox_io_cells"),
+            
+            # HammerTool.make_pre_insertion_hook("generate_drc_run_file", use_drc_lvs_gds),
+            # HammerTool.make_post_insertion_hook("generate_drc_run_file", drc_blackboxes)
+        ]
+    def get_extra_lvs_hooks(self) -> List[HammerToolHookAction]:
+        # TODO: these are calibre specific, pegasus doesn't have this step name
+        return []
+        # return [
+            # HammerTool.make_pre_insertion_hook("generate_lvs_run_file", use_drc_lvs_gds),
+            # HammerTool.make_post_insertion_hook("generate_lvs_run_file", lvs_blackboxes)
+        # ]
 
 if __name__ == '__main__':
     Driver().main()
