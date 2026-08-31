@@ -1,0 +1,238 @@
+iocell_type:
+  corner: sky130_ef_io__corner_pad
+  vdd_core: sky130_ef_io__vccd_lvc_clamped3_pad
+  vss_core: sky130_ef_io__vssd_lvc_clamped3_pad
+  vdd_io: sky130_ef_io__vddio_hvc_clamped_pad
+  vss_io: sky130_ef_io__vssio_hvc_clamped_pad
+  gpio: sky130_ef_io__gpiov2_pad_wrapped
+  reset: sky130_fd_io__top_xres4v2
+
+pitch:
+  pad_width: 75
+  top_slots: 13
+  top_offset: 381
+  top_pitch: 700
+  right_slots: 70
+  right_offset: 340
+  # Spread the vertical pads across the full 25 mm edge. With the 204 um
+  # corners, this leaves about 136 um for fillers at both ends of each side.
+  right_pitch: 351.375
+  bottom_slots: 13
+  bottom_offset: 381
+  bottom_pitch: 739
+  left_slots: 70
+  left_offset: 340
+  left_pitch: 351.375
+
+# Numbered entries use their explicit pin number to select a slot on each side's
+# offset/pitch grid. Every slot is populated: design IOs use their signal names,
+# and all remaining non-power slots use synthesized nc_N instances. Do not omit
+# a numbered slot. Change a pin's value to manually assign that IO cell.
+pins:
+  top:
+    N1: vdd_core
+    N2: vdd_io
+    N3: vssio
+    N4: vssio
+    N5: clock_tap
+    N6: vdd_io
+    N7: vdd_core
+    N8: vdd_io
+    N9: vssd
+    N10: vdd_core
+    N11: vdd_io
+    N12: vssio
+    N13: vdd_core
+
+  right:
+    E70: vssd
+    E69: vdd_io
+    E68: vdd_core
+    E67: serial_tl_0_clock_in
+    E66: serial_tl_0_in_valid
+    E65: serial_tl_0_in_ready
+    E64: custom_boot
+    E63: vssd
+    E62: vdd_io
+    E61: vdd_core
+    E60: serial_tl_0_in_bits_phit
+    E59: nc_27
+    E58: nc_0
+    E57: nc_28
+    E56: nc_29
+    E55: nc_1
+    E54: nc_30
+    E53: nc_2
+    E52: vssd
+    E51: vdd_io
+    E50: vdd_core
+    E49: nc_31
+    E48: nc_32
+    E47: nc_3
+    E46: nc_33
+    E45: nc_4
+    E44: nc_34
+    E43: nc_5
+    E42: nc_35
+    E41: vssd
+    E40: vdd_io
+    E39: vdd_core
+    E38: vdd_core
+    E37: vdd_io
+    E36: vssd
+    E35: nc_36
+    E34: nc_6
+    E33: nc_37
+    E32: nc_7
+    E31: nc_38
+    E30: nc_8
+    E29: nc_39
+    E28: nc_40
+    E27: vssd
+    E26: vdd_io
+    E25: vdd_core
+    E24: nc_9
+    E23: nc_41
+    E22: nc_10
+    E21: nc_42
+    E20: nc_43
+    E19: nc_11
+    E18: nc_44
+    E17: nc_12
+    E16: vssd
+    E15: vdd_io
+    E14: vdd_core
+    E13: vdd_core
+    E12: vdd_io
+    # Keep a normal slice on the local right of the E11 clamped3 pad.
+    IO_FILLER_MANUAL_E_1:
+      cell: sky130_ef_io__com_bus_slice_20um
+      width: 20
+    E11: vssd
+    E10: vssd
+    E9: vdd_io
+    E8: vdd_core
+    E7: vdd_core
+    E6: vdd_io
+    E5: vssd
+    E4: vssd
+    E3: vdd_io
+    # Keep a normal slice on the local right of the E2 clamped3 pad.
+    IO_FILLER_MANUAL_E_2:
+      cell: sky130_ef_io__com_bus_slice_20um
+      width: 20
+    E2: vdd_core
+    E1: vdd_core
+
+  bottom:
+    S1: vdd_core
+    S2: reset_io
+    # Abut the reset cell's far edge to provide its bus-slice tap. The explicit
+    # mode is needed because bottom-side guard fillers normally abut the next pad.
+    IO_FILLER_RESET_TAP:
+      cell: sky130_ef_io__com_bus_slice_20um
+      width: 20
+      abut: previous
+    S3: clock
+    # Keep the original bottom clamp guard immediately before S4.
+    IO_FILLER_MANUAL_S_2:
+      cell: sky130_ef_io__com_bus_slice_20um
+      width: 20
+    S4: vdd_core
+    S5: vdd_io
+    S6: vssd
+    S7: vdd_core
+    S8: vdd_io
+    S9: vssd
+    S10: vdd_core
+    S11: vdd_io
+    S12: vssio
+    # PoR/level-shifter routing hook near the far end of the bottom edge.
+    IO_FILLER_MANUAL_S_3:
+      cell: sky130_ef_io__com_bus_slice_20um
+      width: 20
+    S13: vdd_core
+
+  left:
+    W70: vssd
+    W69: vdd_io
+    W68: vdd_core
+    W67: serial_tl_0_out_valid
+    W66: serial_tl_0_out_ready
+    W65: jtag_TCK
+    W64: jtag_TDI
+    W63: jtag_TDO
+    W62: jtag_TMS
+    W61: jtag_reset
+    W60: uart_0_txd
+    W59: uart_0_rxd
+    W58: vssd
+    W57: vdd_io
+    W56: vdd_core
+    W55: serial_tl_0_out_bits_phit
+    W54: nc_45
+    W53: nc_13
+    W52: nc_46
+    W51: nc_14
+    W50: nc_47
+    W49: nc_48
+    W48: nc_15
+    W47: vssd
+    W46: vdd_io
+    W45: vdd_core
+    W44: nc_49
+    W43: nc_16
+    W42: nc_50
+    W41: nc_17
+    W40: nc_51
+    W39: nc_18
+    W38: nc_52
+    W37: nc_53
+    W36: vssd
+    W35: vdd_io
+    W34: vdd_core
+    W33: vdd_core
+    W32: vdd_io
+    W31: vssd
+    W30: nc_19
+    W29: nc_54
+    W28: nc_20
+    W27: nc_55
+    W26: nc_21
+    W25: nc_56
+    W24: nc_22
+    W23: nc_57
+    W22: vssd
+    # Keep a normal slice on the local right of the W22 clamped3 pad.
+    IO_FILLER_MANUAL_W_1:
+      cell: sky130_ef_io__com_bus_slice_20um
+      width: 20
+    W21: vdd_io
+    W20: vdd_core
+    W19: nc_23
+    W18: nc_58
+    W17: nc_59
+    W16: nc_24
+    W15: nc_60
+    W14: nc_25
+    W13: nc_61
+    W12: nc_26
+    W11: vssd
+    # Keep a normal slice on the local right of the W11 clamped3 pad.
+    IO_FILLER_MANUAL_W_2:
+      cell: sky130_ef_io__com_bus_slice_20um
+      width: 20
+    W10: vdd_io
+    W9: vdd_core
+    W8: vdd_core
+    W7: vdd_io
+    W6: vssd
+    W5: vssd
+    W4: vdd_io
+    W3: vdd_core
+    # Keep a normal slice on the local right of the W3 clamped3 pad.
+    IO_FILLER_MANUAL_W_3:
+      cell: sky130_ef_io__com_bus_slice_20um
+      width: 20
+    W2: vdd_io
+    W1: vdd_core

@@ -35,7 +35,7 @@ else
 endif
 
 ENV_YML            ?= $(vlsi_dir)/env.yml
-TECH_CONF          ?= example-$(tech_name).yml
+TECH_CONF          ?= example-$(tech_name)-larger.yml
 TOOLS_CONF         ?= example-tools.yml
 INPUT_CONFS        ?= $(TOOLS_CONF) $(TECH_CONF)
 HAMMER_EXEC        ?= ./hammer-driver
