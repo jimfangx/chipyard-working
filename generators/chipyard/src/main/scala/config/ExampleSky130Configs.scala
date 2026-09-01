@@ -41,7 +41,7 @@ class SoCConfig extends Config(
   new WithOffchipBusClient(MBUS) ++
   new WithOffchipBus ++
   new chipyard.sky130.WithSky130EFIOCells(sim = false) ++
-  new chipyard.sky130.WithSky130EFIOTotalCells(45) ++
+  new chipyard.sky130.WithSky130EFIOTotalCells(80) ++
   new WithExtMemSize(1L << 30) ++
   new WithCoherentBusTopology ++
   new chipyard.config.AbstractConfig)
@@ -55,5 +55,13 @@ class Sky130RocketConfig extends Config(
   new SoCConfig)
 
 class Sky130ShuttleConfig extends Config(
-  new shuttle.common.WithNShuttleCores ++
+  new shuttle.common.WithL1ICacheSets(1) ++
+  new shuttle.common.WithL1ICacheWays(1) ++
+  new shuttle.common.WithL1DCacheSets(4) ++
+  new shuttle.common.WithL1DCacheWays(1) ++
+  new shuttle.common.WithNShuttleCores(1) ++
+  new SoCConfig)
+
+class Sky130DualShuttleConfig extends Config(
+  new shuttle.common.WithNShuttleCores(5) ++
   new SoCConfig)
