@@ -25,7 +25,7 @@ dependencies:
     - doit>=0.34.0
     - gitpython
     - humanfriendly
-    - ctags
+    - universal-ctags
     - bison
     - flex
     - expat
@@ -33,7 +33,7 @@ dependencies:
     - bc
     - unzip
     - patch
-    - which=2.21=h0b41bf4_1
+    - which
     - sed
     - diffutils
     - bash
@@ -88,7 +88,7 @@ dependencies:
     # packages so that the environment is consistent
     - screen
     - elfutils
-    - libdwarf-dev==0.0.0.20190110_28_ga81397fc4 # from ucb-bar channel - using mainline libdwarf-feedstock
+    - conda-forge::libdwarf-dev=2.1.0.*
     - colorama
     - argcomplete
     - python-graphviz
