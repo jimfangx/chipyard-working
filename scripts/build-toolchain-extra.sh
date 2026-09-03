@@ -99,7 +99,7 @@ echo '==> Installing espresso logic minimizer'
 # Common tools (not in any particular toolchain dir)
 
 echo '==>  Installing libgloss'
-CC= CXX= SRCDIR="$(pwd)/toolchains" module_all libgloss --prefix="${RISCV}/riscv${XLEN}-unknown-elf" --host=riscv${XLEN}-unknown-elf
+CC= CXX= SRCDIR="$(pwd)/toolchains" module_all libgloss --prefix="${RISCV}/riscv${XLEN}-unknown-elf" --host=riscv${XLEN}-unknown-elf --enable-multilib=yes
 
 cd $RDIR
 if [ $TOOLCHAIN == "riscv-tools" ]; then
