@@ -36,5 +36,4 @@ dependencies:
     - dtc
     - verilator==5.022
 
-    # used in build-setup.sh as well
     - conda-lock
