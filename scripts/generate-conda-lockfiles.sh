@@ -4,14 +4,27 @@ set -ex
 
 CUR_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 
+CY_DIR=$(cd "$CUR_DIR/.." && pwd)
+
 REQS_DIR="$CUR_DIR/../conda-reqs"
+CONDA_LOCK_ENV_PATH="$CY_DIR/.conda-lock-env"
+
 if [ ! -d "$REQS_DIR" ]; then
   echo "$REQS_DIR does not exist, make sure you're calling this script from chipyard/"
   exit 1
 fi
 
-if ! conda-lock --version | grep $(grep "conda-lock" $REQS_DIR/chipyard-base.yaml | sed 's/^ \+-.*=//'); then
-  echo "Invalid conda-lock version, make sure you're calling this script with the sourced chipyard env.sh"
+if [[ ! -x "$CONDA_LOCK_ENV_PATH/bin/conda-lock" ]]; then
+  echo "conda-lock environment not found; run build-setup.sh Step 1 first."
+  exit 1
+fi
+
+# We never authenticate to a private index, so disable the keyring outright. Otherwise sometimes this hangs
+export PYTHON_KEYRING_BACKEND=keyring.backends.null.Keyring
+
+CONDA_EXE="${CONDA_EXE:-$(command -v conda)}"
+if [[ ! -x "$CONDA_EXE" ]]; then
+  echo "no conda executable found; set CONDA_EXE or put conda on PATH."
   exit 1
 fi
 
@@ -20,7 +33,8 @@ for TOOLCHAIN_TYPE in riscv-tools; do
     LOCKFILE=$REQS_DIR/conda-lock-reqs/conda-requirements-$TOOLCHAIN_TYPE-linux-64.conda-lock.yml
     rm -rf $LOCKFILE
 
-    conda-lock \
+    "$CONDA_LOCK_ENV_PATH/bin/conda-lock" \
+      --conda "$CONDA_EXE" \
       --no-mamba \
       --no-micromamba \
       -f "$REQS_DIR/chipyard-base.yaml" \
@@ -33,7 +47,8 @@ for TOOLCHAIN_TYPE in riscv-tools; do
     LOCKFILE=$REQS_DIR/conda-lock-reqs/conda-requirements-$TOOLCHAIN_TYPE-linux-64-lean.conda-lock.yml
     rm -rf $LOCKFILE
 
-    conda-lock \
+    "$CONDA_LOCK_ENV_PATH/bin/conda-lock" \
+      --conda "$CONDA_EXE" \
       --no-mamba \
       --no-micromamba \
       -f "$REQS_DIR/chipyard-base.yaml" \

@@ -78,6 +78,7 @@ dependencies:
     # hammer packages
     - sty
     # - open_pdks.sky130a
+    - pydantic<2 # for hammer compatibility
     - pip:
         - hammer-vlsi[asap7]==1.2.0
 

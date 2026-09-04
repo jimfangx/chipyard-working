@@ -35,5 +35,3 @@ dependencies:
     - openjdk=20
     - dtc
     - verilator==5.022
-
-    - conda-lock
