@@ -3,6 +3,7 @@ channels:
     - conda-forge
     - litex-hub
     - nodefaults
+    - jimfangx
 
 platforms:
     - linux-64

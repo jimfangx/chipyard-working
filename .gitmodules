@@ -73,18 +73,12 @@
 [submodule "software/embench/embench-iot"]
 	path = software/embench/embench-iot
 	url = https://github.com/embench/embench-iot.git
-[submodule "software/firemarshal"]
-	path = software/firemarshal
-	url = https://github.com/firesim/FireMarshal.git
 [submodule "software/nvdla-workload"]
 	path = software/nvdla-workload
 	url = https://github.com/ucb-bar/nvdla-workload.git
 [submodule "software/spec2017"]
 	path = software/spec2017
 	url = https://github.com/ucb-bar/spec2017-workload.git
-[submodule "toolchains/libgloss"]
-	path = toolchains/libgloss
-	url = https://github.com/ucb-bar/libgloss-htif.git
 [submodule "toolchains/riscv-tools/riscv-isa-sim"]
 	path = toolchains/riscv-tools/riscv-isa-sim
 	url = https://github.com/riscv-software-src/riscv-isa-sim.git
@@ -166,3 +160,9 @@
 [submodule "software/spec2026"]
 	path = software/spec2026
 	url = https://github.com/ucb-bar/spec2026-workload.git
+[submodule "toolchains/libgloss"]
+	path = toolchains/libgloss
+	url = https://github.com/jimfangx/libgloss-htif.git
+[submodule "software/firemarshal"]
+	path = software/firemarshal
+	url = https://github.com/jimfangx/FireMarshal.git
