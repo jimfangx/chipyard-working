@@ -790,10 +790,10 @@ package:
     libgcc: '>=15'
     libjpeg-turbo: '>=3.2.0,<4.0a0'
     libtiff: '>=4.7.2,<4.8.0a0'
-  url: https://conda.anaconda.org/conda-forge/linux-64/lcms2-2.19.1-h9073bf1_2.conda
+  url: https://conda.anaconda.org/conda-forge/linux-64/lcms2-2.19.1-h9073bf1_3.conda
   hash:
-    md5: b68c7304d2edb0f1a5bdfb875094d603
-    sha256: 8cdec1ff3f276cd2069dca0dae4f45f3dc5c224e2d72daef78227832938467a6
+    md5: 596464faa06e0b656b35416188ef9bba
+    sha256: 03e675b9adaf235aab880e4133c72f4830e87bc7da2df59d6194771612239b22
   category: main
   optional: false
 - name: ld_impl_linux-64
@@ -1014,10 +1014,10 @@ package:
     libiconv: '>=1.18,<2.0a0'
     libzlib: '>=1.3.2,<2.0a0'
     pcre2: '>=10.47,<10.48.0a0'
-  url: https://conda.anaconda.org/conda-forge/linux-64/libglib-2.88.3-he503a2a_3.conda
+  url: https://conda.anaconda.org/conda-forge/linux-64/libglib-2.88.3-h569388d_4.conda
   hash:
-    md5: d216efacca3f34f2b13ddd1632f53833
-    sha256: f57bf3954dbba8b27ec68540e84f8b2c2375ffa5702f89ca9741e17329fc3953
+    md5: 48eafe0a06f3192f47b36b666fe993fa
+    sha256: 63bfc24e180e03e313e53f29046197ae6e2a75e708c8b42e508f52263eaf24aa
   category: main
   optional: false
 - name: libgomp
@@ -1573,12 +1573,13 @@ package:
   manager: conda
   platform: linux-64
   dependencies:
-    libgcc-ng: '>=12'
-    libxcrypt: '>=4.4.36'
-  url: https://conda.anaconda.org/conda-forge/linux-64/perl-5.32.1-7_hd590300_perl5.conda
+    __glibc: '>=2.17,<3.0.a0'
+    libgcc: '>=15'
+    libxcrypt: '>=4.4.38'
+  url: https://conda.anaconda.org/conda-forge/linux-64/perl-5.32.1-9_h7cc23a3_perl5.conda
   hash:
-    md5: f2cfec9406850991f4e3d960cc9e3321
-    sha256: 9ec32b6936b0e37bcb0ed34f22ec3116e75b3c0964f9f50ecea5f58734ed6ce9
+    md5: da53476767a523b23baf56b724a11e0b
+    sha256: d81859fc9f6fe6a49175403d3ddf93ba8038cb4f12664bc4cf628d200b664bd4
   category: main
   optional: false
 - name: pip

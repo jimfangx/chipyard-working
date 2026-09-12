@@ -54,6 +54,7 @@ set(LINKER_SCRIPT       "htif.ld")
 
 add_compile_options(-std=gnu99)
 add_compile_options(-O2 -Wall -Wextra)
+add_compile_options(-Wno-implicit-function-declaration)
 add_compile_options(-fno-common -fno-builtin-printf)
 add_compile_options(${ARCH_FLAGS})
 add_compile_options(${SPEC_FLAGS})
@@ -72,6 +73,12 @@ add_executable(blkdev blkdev.c)
 add_executable(accum accum.c)
 add_executable(charcount charcount.c)
 add_executable(cpp-hello cpp-hello.cpp)
+target_link_libraries(cpp-hello PRIVATE
+    "-Wl,--start-group"
+    "-l:libc.a"
+    "-lstdc++"
+    "-Wl,--end-group"
+)
 add_executable(nic-loopback nic-loopback.c)
 add_executable(big-blkdev big-blkdev.c)
 add_executable(pingd pingd.c)
