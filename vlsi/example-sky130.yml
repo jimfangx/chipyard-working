@@ -57,10 +57,19 @@ vlsi.core.max_threads: 32
 technology.core.stackup: "sky130_scl"
 
 vlsi.technology.placement_site: "CoreSite"
+# Do not impose an absolute bottom routing layer. The Innovus hook keeps met1
+# available for pin access and applies met2-met5 as a preferred signal-routing
+# range instead.
+vlsi.technology.routing_layers: null
 
 # Technology paths
 technology.sky130:
   sky130A: "/scratch/jfx/open-pdks/sky130/sky130A" # TODO(jimfang) bump to tools
+
+  # P&R-side switch for the block-level Sky130RocketConfig. The driver skips
+  # the IO ring, IO fillers, PoR/level-shifter placement and chip-only routing,
+  # then uses vlsi.inputs.pin.assignments for the ordinary ChipTop ports.
+  use_io_cells: true
 
   # Cadence SkyWater 130nm PDK Path
   sky130_cds: "/tools/commercial/skywater/sky130_cds/PDK/sky130_release_0.0.9"
@@ -97,7 +106,8 @@ vlsi.core.sram_generator_tool: "hammer.technology.sky130.sram_compiler"
 
 
 
-# Power Straps
+# Power Straps -- keep this thin by-tracks recipe synchronized with
+# example-sky130-larger.yml.
 par.power_straps_mode: generate
 par.generate_power_straps_method: by_tracks
 par.blockage_spacing: 2.0
@@ -213,6 +223,13 @@ vlsi.inputs.placement_constraints:
 # Pin placement constraints
 vlsi.inputs.pin_mode: generated
 vlsi.inputs.pin.generate_mode: semi_auto
+# In block mode (technology.sky130.use_io_cells: false), this default puts all
+# ports on one side. To distribute them, replace it with assignments such as:
+#   - {pins: "clock*", layers: ["met2", "met4"], side: "bottom"}
+#   - {pins: "reset*", layers: ["met2", "met4"], side: "top"}
+#   - {pins: "in_*", layers: ["met3", "met5"], side: "left"}
+#   - {pins: "out_*", layers: ["met3", "met5"], side: "right"}
+# Use non-overlapping pin names/globs so every block port is assigned once.
 vlsi.inputs.pin.assignments: [
   {pins: "*", layers: ["met2", "met4"], side: "bottom"}
 ]

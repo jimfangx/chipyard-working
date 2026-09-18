@@ -35,6 +35,29 @@ def load_chiptop_io_nets(pin_map_path: Path = CHIPTOP_IO_PIN_MAP_PATH) -> List[s
 CHIPTOP_IO_NETS = load_chiptop_io_nets()
 
 CHIPTOP_DONT_TOUCH_NETS = ["_commonIO_AMUXBUS_A_wire", "_commonIO_AMUXBUS_B_wire"]
+SKY130_USE_IO_CELLS_SETTING = "technology.sky130.use_io_cells"
+
+
+def use_io_cells(x: HammerTool) -> bool:
+    """Return whether this run should include the chip-level Sky130 IO ring."""
+    cache_attr = "_sky130_use_io_cells"
+    cached = getattr(x, cache_attr, None)
+    if cached is not None:
+        return bool(cached)
+
+    try:
+        enabled = x.get_setting(SKY130_USE_IO_CELLS_SETTING)
+    except KeyError:
+        # Preserve the historical chip-level flow for configurations that do
+        # not yet contain the new setting.
+        enabled = True
+
+    if not isinstance(enabled, bool):
+        raise TypeError(f"{SKY130_USE_IO_CELLS_SETTING} must be a boolean")
+
+    setattr(x, cache_attr, enabled)
+    return enabled
+
 # ================ SYNTHESIS HOOOKS ===============
 
 # TODO(jimfang) unused for now, does this break things?
@@ -54,28 +77,31 @@ def dont_touch(x: HammerTool) -> bool:
     return True
 
 def donttouch_iocells(x: HammerTool) -> bool:
+    if not use_io_cells(x):
+        return True
     x.append('set_dont_touch [get_db insts -if {.base_cell.name == sky130_ef_io__*}] true')
     return True
 
 def flatten_analog_driver(x: HammerTool) -> bool:
+    if not use_io_cells(x):
+        return True
     # AnalogDriver is a kludge to get FIRRTL to understand how to connect nets
     # together, they should get dissolved
-    x.append('ungroup [get_db hinsts -if {.module.name == AnalogDriver*}]')
+    x.append(r'''
+set analog_drivers [get_db hinsts -if {.module.name == AnalogDriver*}]
+if {[llength $analog_drivers] > 0} {
+    ungroup $analog_drivers
+}
+''')
     return True
 
 def chiptop_dont_touch(x: HammerTool) -> bool:
+    if not use_io_cells(x):
+        return True
     x.append("set_dont_touch [get_nets {%s}] true" % " ".join(CHIPTOP_DONT_TOUCH_NETS))
     return True
 
 # ============== PAR HOOKS =============
-
-# def set_routing_layers(x: HammerTool) -> bool:
-#     # cadence std cells use met1 for pins
-#     x.append("""
-# set_db design_bottom_routing_layer met2
-# set_db design_top_routing_layer met5
-#     """)
-#     return True 
 
 def set_routing_layers(x: HammerTool) -> bool:
     # cadence std cells use met1 for pins
@@ -107,7 +133,6 @@ puts "##### Finished M2-M5 preferred-routing setup"
     """)
     return True 
 
-# TODO(jimfang) if setting without io cells, this will need to set the global routing layer bottom to met2
 # def set_routing_layers(x: HammerTool) -> bool:
 #     x.append(r'''
 #     ##############################################################
@@ -166,6 +191,8 @@ puts "##### Finished M2-M5 preferred-routing setup"
 #     return True
 
 def connect_core_stripes_to_ring(x: HammerTool) -> bool:
+    if not use_io_cells(x):
+        return True
     # connect floating stripes on met4/met5 in core area to power ring via layers met3-met5 (permissive), no jogging allowed
     x.append('''
 route_special -connect floating_stripe -floating_stripe_target ring -nets {VDD VSS} -stripe_layer_range {met4 met5} -allow_jogging 0 -layer_change_range {met3 met5} -crossover_via_layer_range {met3 met5} -detailed_log
@@ -173,6 +200,16 @@ route_special -connect floating_stripe -floating_stripe_target ring -nets {VDD V
     return True
 
 def assign_chiptop_io_pins(x: HammerTool) -> bool:
+    if not use_io_cells(x):
+        x.logger.info(
+            "Sky130 IO cells are disabled; placing block ports from "
+            "vlsi.inputs.pin.assignments"
+        )
+        # The driver removes Hammer's place_pins step below so the IO-ring
+        # flow can replace it. Invoke that standard implementation here for
+        # block-level P&R.
+        return x.place_pins()  # type: ignore[attr-defined]
+
     x.logger.info("CHIPTOP_IO_NETS: {}".format(" ".join(CHIPTOP_IO_NETS)))
     x.append(f'''
 set_promoted_macro_pin -insts *iocell -pins {{ P_PAD PAD }}
@@ -205,12 +242,16 @@ def set_die_snap_to_mfg_grid(x: HammerTool) -> bool:
     return True
 
 def chiptop_dont_route(x: HammerTool) -> bool:
+    if not use_io_cells(x):
+        return True
     for net in CHIPTOP_DONT_TOUCH_NETS:
       x.append(f"set_route_attributes -nets {net} -skip_routing true")
     return True
 
 
 def force_bias_pins_nets(x: HammerTool) -> bool:
+    if not use_io_cells(x):
+        return True
     x.append('''
 connect_global_net VDDIO -netlist_override -power_domain HV -pin_base_name VPB -type pg_pin -verbose
 connect_global_net VDD -netlist_override -power_domain AO -pin_base_name VPB -type pg_pin -verbose
@@ -220,6 +261,10 @@ connect_global_net VSS -netlist_override -power_domain AO -pin_base_name VNB -ty
     return True
 
 def efabless_ring_io(ht: HammerTool) -> bool:
+    if not use_io_cells(ht):
+        ht.logger.info("Skipping Sky130 IO-ring creation for block-level P&R")
+        return True
+
     # Copied from Harrison's version in hammer to make some adjustments:
     # - global connections removed - now handled by CPF
     # - add fixing of IO fillers
@@ -338,6 +383,8 @@ set_dont_touch [get_db [get_db pins -if {.name == *TIE*ESD}] .net]
 
 # TODO(jimfang) this placed the LS at 745.18 201.42 - might be on top of the 20µm slice filler
 def place_reset_level_shifter(x: HammerTool) -> bool:
+    if not use_io_cells(x):
+        return True
     x.append(r'''
 set tap [get_db insts IO_FILLER_RESET_TAP]
 set ls  [get_db insts iocell_reset/levelShifter]
@@ -397,6 +444,8 @@ puts "Reset LS bbox: [get_db $ls .bbox]"
 
 # TODO(jimfang) last add_pg_vias failed to find legal location
 def route_reset_level_shifter_power(x: HammerTool) -> bool:
+    if not use_io_cells(x):
+        return True
     x.append(r'''
 set tap [get_db insts IO_FILLER_RESET_TAP]
 set ls  [get_db insts iocell_reset/levelShifter]
@@ -586,6 +635,9 @@ def place_por(ht: HammerTool) -> bool:
         orientation = FS in DEF = mx in Stylus Common UI
     """
     
+    if not use_io_cells(ht):
+        return True
+
     ht.append(r"""
 ########################################################################
 # Place simple_por at the lower-right corner of the core
@@ -713,6 +765,8 @@ if {[get_db $por_obj .place_status] ne "fixed"} {
 
 
 def route_por_power(x: HammerTool) -> bool:
+    if not use_io_cells(x):
+        return True
     x.append(r'''
 ########################################################################
 # Route simple_por PG pins.
@@ -1082,10 +1136,6 @@ def place_sram_macros(x: HammerTool) -> bool:
     We intentionally retain the 8.28 um placement halo used by this flow,
     rather than Hammer's default/generated 2.2 um halo, because the larger
     halo reserves the SRAM pin-escape corridor.
-
-    For the Rocket icache tag SRAM, match Hammer's generated behavior:
-      route halo: met1 -> met4
-      PG blockage: met1/met2/met3
 
     All other SRAM22 macros:
       route halo: met1 -> met2
@@ -1985,11 +2035,15 @@ def draw_areaidld(x: HammerTool) -> bool:
     return True
 
 def write_chiptop_netlist_with_pg_pins(x: HammerTool) -> bool:
+    if not use_io_cells(x):
+        return True
     x.append(f"write_netlist {x.output_netlist_filename} -top_module_first -top_module ChipTop -exclude_leaf_cells -phys -flat -exclude_insts_of_cells {{ sky130_fd_sc_hd__tap_1 sky130_fd_sc_hd__tap_2 sky130_fd_sc_hd__tapvgnd_1 sky130_fd_sc_hd__tapvpwrvgnd_1 sky130_fd_sc_hd__fill_1 sky130_fd_sc_hd__fill_2 sky130_fd_sc_hd__fill_4 sky130_fd_sc_hd__fill_8 sky130_fd_sc_hd__diode_2 sky130_ef_io__connect_vcchib_vccd_and_vswitch_vddio_and_vssio_vssa_vssd_slice_20um sky130_ef_io__com_bus_slice_10um sky130_ef_io__com_bus_slice_5um sky130_ef_io__com_bus_slice_1um sky130_ef_io__com_bus_slice_20um sky130_ef_io__corner_pad sky130_ef_io__connect_vcchib_vccd_and_vswitch_vddio_and_vssio_vssa_vssd_slice_20um }}")
 
     return True
 
 def write_chiptop_drc_lvs_layout(x: HammerTool) -> bool:
+    if not use_io_cells(x):
+        return True
     map_file = get_or_else(
         optional_map(x.get_gds_map_file(), lambda f: "-map_file {}".format(f)),
         ""

@@ -62,6 +62,10 @@ vlsi.technology.placement_site: "CoreSite"
 technology.sky130:
   sky130A: "/scratch/jfx/open-pdks/sky130/sky130A" # TODO(jimfang) bump to tools
 
+  # The Scala configuration omits WithSky130EFIOCells, so keep the chip-only
+  # IO-ring, filler, PoR and level-shifter hooks disabled here as well.
+  use_io_cells: false
+
   # Cadence SkyWater 130nm PDK Path
   sky130_cds: "/tools/commercial/skywater/sky130_cds/PDK/sky130_release_0.0.9"
   # Cadence SkyWater 130nm Standard Cell Library Path
@@ -215,6 +219,13 @@ vlsi.inputs.placement_constraints:
 # Pin placement constraints
 vlsi.inputs.pin_mode: generated
 vlsi.inputs.pin.generate_mode: semi_auto
+# In block mode (technology.sky130.use_io_cells: false), this default puts all
+# ports on one side. To distribute them, replace it with assignments such as:
+#   - {pins: "clock*", layers: ["met2", "met4"], side: "bottom"}
+#   - {pins: "reset*", layers: ["met2", "met4"], side: "top"}
+#   - {pins: "in_*", layers: ["met3", "met5"], side: "left"}
+#   - {pins: "out_*", layers: ["met3", "met5"], side: "right"}
+# Use non-overlapping pin names/globs so every block port is assigned once.
 vlsi.inputs.pin.assignments: [
   {pins: "*", layers: ["met2", "met4"], side: "bottom"}
 ]
