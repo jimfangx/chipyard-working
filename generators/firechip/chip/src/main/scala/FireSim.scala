@@ -98,7 +98,11 @@ class FireSim(implicit val p: Parameters) extends RawModule with HasHarnessInsta
   val dummy = WireInit(false.B)
   val peekPokeBridge = PeekPokeBridge(harnessBinderClock, dummy)
 
-  val resetBridge = Module(new ResetPulseBridge(ResetPulseBridgeParameters()))
+  // DFX reloads need a long explicit DUT reset after the partial bitstream is
+  // programmed. The normal default remains 50 cycles; the runtime only adds
+  // +reset-pulse-length0=10000000 for a DFX hardware configuration.
+  val resetBridge = Module(new ResetPulseBridge(ResetPulseBridgeParameters(
+    maxPulseLength = 10_000_000)))
   // In effect, the bridge counts the length of the reset in terms of this clock.
   resetBridge.io.clock := harnessBinderClock
 

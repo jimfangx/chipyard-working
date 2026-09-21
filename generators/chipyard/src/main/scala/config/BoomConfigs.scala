@@ -25,6 +25,20 @@ class MegaBoomV3Config extends Config(
   new chipyard.config.WithSystemBusWidth(128) ++
   new chipyard.config.AbstractConfig)
 
+class BestOffsetPrefetchingMegaBoomV3Config extends Config(
+  new barf.WithBestOffsetPrefetcher(barf.BestOffsetPrefetcherParams()) ++
+  new chipyard.config.WithTilePrefetchers ++
+  new boom.v3.common.WithNMegaBooms(1) ++
+  new chipyard.config.WithSystemBusWidth(128) ++
+  new chipyard.config.AbstractConfig)
+
+class AMPMPrefetchingMegaBoomV3Config extends Config(
+  new barf.WithTLDCachePrefetcher(barf.SingleAMPMPrefetcherParams()) ++
+  new chipyard.config.WithTilePrefetchers ++
+  new boom.v3.common.WithNMegaBooms(1) ++
+  new chipyard.config.WithSystemBusWidth(128) ++
+  new chipyard.config.AbstractConfig)
+
 class DualSmallBoomV3Config extends Config(
   new boom.v3.common.WithNSmallBooms(2) ++                          // 2 boom cores
   new chipyard.config.AbstractConfig)

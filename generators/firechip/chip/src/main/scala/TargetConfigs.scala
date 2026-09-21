@@ -221,6 +221,19 @@ class FireSimQuadRocketConfig extends Config(
   new WithFireSimConfigTweaks ++
   new chipyard.QuadRocketConfig)
 
+// Small base/RM demonstration substrate for the U250 DFX flow.
+class FireSimDfxBestOffsetPrefetchingRocketConfig extends Config(
+  new firechip.dfx.WithReconfigurablePrefetchers ++
+  new WithDefaultFireSimBridges ++
+  new WithFireSimConfigTweaks ++
+  new chipyard.BestOffsetPrefetchingRocketConfig)
+
+class FireSimDfxAMPMPrefetchingRocketConfig extends Config(
+  new firechip.dfx.WithReconfigurablePrefetchers ++
+  new WithDefaultFireSimBridges ++
+  new WithFireSimConfigTweaks ++
+  new chipyard.AMPMPrefetchingRocketConfig)
+
 // A stripped down configuration that should fit on all supported hosts.
 // Flat to avoid having to reorganize the config class hierarchy to remove certain features
 class FireSimSmallSystemConfig extends Config(
@@ -255,6 +268,20 @@ class FireSimLargeBoomConfig extends Config(
   new WithDefaultFireSimBridges ++
   new WithFireSimConfigTweaks ++
   new chipyard.LargeBoomV3Config)
+
+// Full-size examples: each has the same ReconfigurablePrefetcher boundary;
+// only the implementation beneath that boundary differs between RM recipes.
+class FireSimDfxBestOffsetPrefetchingMegaBoomV3Config extends Config(
+  new firechip.dfx.WithReconfigurablePrefetchers ++
+  new WithDefaultFireSimBridges ++
+  new WithFireSimConfigTweaks ++
+  new chipyard.BestOffsetPrefetchingMegaBoomV3Config)
+
+class FireSimDfxAMPMPrefetchingMegaBoomV3Config extends Config(
+  new firechip.dfx.WithReconfigurablePrefetchers ++
+  new WithDefaultFireSimBridges ++
+  new WithFireSimConfigTweaks ++
+  new chipyard.AMPMPrefetchingMegaBoomV3Config)
 
 //*****************************************************************
 // Saturn configs, base off chipyard's SaturnConfigs
@@ -381,5 +408,4 @@ class CTCFireSimConfig extends Config(
   new chipyard.iobinders.WithCTCPunchthrough ++ 
   new FireSimRocketConfig
 )
-
 
