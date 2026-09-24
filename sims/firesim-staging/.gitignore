@@ -1,3 +1,5 @@
 *
 !.gitignore
 !Makefile
+!sample_config_build_dfx.yaml
+!sample_config_build_recipes_dfx.yaml

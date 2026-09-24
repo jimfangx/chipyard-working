@@ -17,6 +17,8 @@ class ReconfigurablePrefetcher(params: CanInstantiatePrefetcher)
   val wrapperName = "ReconfigurablePrefetcher"
   val inner = params.instantiate()(p)
   io <> inner.io
+  // Keep every declared partition port, including currently unused outputs.
+  dontTouch(io)
 }
 
 case class ReconfigurablePrefetcherParams(inner: CanInstantiatePrefetcher)

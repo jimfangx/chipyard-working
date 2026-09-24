@@ -283,6 +283,25 @@ class FireSimDfxAMPMPrefetchingMegaBoomV3Config extends Config(
   new WithFireSimConfigTweaks ++
   new chipyard.AMPMPrefetchingMegaBoomV3Config)
 
+/** Diagnostic RM for the dfx-prefetcher-probe workload.
+  *
+  * This deliberately learns only the workload's 65-cache-line reference
+  * stride.  It is not a useful general-purpose prefetcher: its purpose is to
+  * make the probe reject the normal BOP signature after an RM is loaded.
+  */
+class FireSimDfxOffset65CanaryPrefetchingMegaBoomV3Config extends Config(
+  new firechip.dfx.WithReconfigurablePrefetchers ++
+  new WithDefaultFireSimBridges ++
+  new WithFireSimConfigTweaks ++
+  new barf.WithBestOffsetPrefetcher(
+    barf.BestOffsetPrefetcherParams(
+      scoreMax = 7,
+      roundMax = 16,
+      badScore = 1,
+      degree = 2,
+      offsets = Seq(65))) ++
+  new chipyard.BestOffsetPrefetchingMegaBoomV3Config)
+
 //*****************************************************************
 // Saturn configs, base off chipyard's SaturnConfigs
 //*****************************************************************
