@@ -290,6 +290,22 @@ firesim_gemmini_printf_rocket_singlecore_no_nic:
     metasim_customruntimeconfig: null
     bit_builder_recipe: bit-builder-recipes/f2.yaml
 
+# Corigine XB-10 normal FireSim example
+corigine_xb10_firesim_rocket_singlecore_no_nic:
+    PLATFORM: corigine_xb10
+    TARGET_PROJECT: firesim
+    TARGET_PROJECT_MAKEFRAG: ../../generators/firechip/chip/src/main/makefrag/firesim
+    DESIGN: FireSim
+    TARGET_CONFIG: FireSimRocket4GiBDRAMConfig
+    PLATFORM_CONFIG: BaseCorigineXB10Config
+    deploy_quintuplet: null
+    platform_config_args:
+        fpga_frequency: 60
+        build_strategy: TIMING
+    post_build_hook: null
+    metasim_customruntimeconfig: null
+    bit_builder_recipe: bit-builder-recipes/corigine_xb10.yaml
+
 # Additional Xilinx Alveo U250-only Configs
 alveo_u250_firesim_rocket_singlecore_no_nic:
     PLATFORM: xilinx_alveo_u250

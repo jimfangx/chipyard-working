@@ -234,6 +234,16 @@ class FireSimDfxAMPMPrefetchingRocketConfig extends Config(
   new WithFireSimConfigTweaks ++
   new chipyard.AMPMPrefetchingRocketConfig)
 
+// Keep the guest memory map within XB-10's 8 GiB physical DDR4 channel.
+// Both variants retain the same static system and DFX wrapper boundary.
+class FireSimXB10DfxBestOffsetPrefetchingRocketConfig extends Config(
+  new freechips.rocketchip.subsystem.WithExtMemSize(0x100000000L) ++
+  new FireSimDfxBestOffsetPrefetchingRocketConfig)
+
+class FireSimXB10DfxAMPMPrefetchingRocketConfig extends Config(
+  new freechips.rocketchip.subsystem.WithExtMemSize(0x100000000L) ++
+  new FireSimDfxAMPMPrefetchingRocketConfig)
+
 // A stripped down configuration that should fit on all supported hosts.
 // Flat to avoid having to reorganize the config class hierarchy to remove certain features
 class FireSimSmallSystemConfig extends Config(
@@ -282,6 +292,14 @@ class FireSimDfxAMPMPrefetchingMegaBoomV3Config extends Config(
   new WithDefaultFireSimBridges ++
   new WithFireSimConfigTweaks ++
   new chipyard.AMPMPrefetchingMegaBoomV3Config)
+
+class FireSimXB10DfxBestOffsetPrefetchingMegaBoomV3Config extends Config(
+  new freechips.rocketchip.subsystem.WithExtMemSize(0x100000000L) ++
+  new FireSimDfxBestOffsetPrefetchingMegaBoomV3Config)
+
+class FireSimXB10DfxAMPMPrefetchingMegaBoomV3Config extends Config(
+  new freechips.rocketchip.subsystem.WithExtMemSize(0x100000000L) ++
+  new FireSimDfxAMPMPrefetchingMegaBoomV3Config)
 
 /** Diagnostic RM for the dfx-prefetcher-probe workload.
   *
@@ -427,4 +445,3 @@ class CTCFireSimConfig extends Config(
   new chipyard.iobinders.WithCTCPunchthrough ++ 
   new FireSimRocketConfig
 )
-

@@ -10,6 +10,7 @@ install_root="${DESTDIR:-}"
 install_dir="${install_root}/usr/local/bin"
 sudo_scripts="${repo_root}/sims/firesim/deploy/sudo-scripts"
 u250_scripts="${repo_root}/sims/firesim/platforms/xilinx_alveo_u250/scripts"
+xb10_scripts="${repo_root}/sims/firesim/platforms/corigine_xb10/scripts"
 
 if [[ -z "${DESTDIR:-}" && "${EUID}" -ne 0 ]]; then
     echo "Run this installer as root (for example, with sudo)." >&2
@@ -38,7 +39,7 @@ install_script() {
     install "${owner_args[@]}" -m "${mode}" "${source}" "${install_dir}/$(basename "${source}")"
 }
 
-for source in "${sudo_scripts}"/* "${u250_scripts}"/*; do
+for source in "${sudo_scripts}"/* "${u250_scripts}"/* "${xb10_scripts}"/*; do
     [[ -f "${source}" ]] || continue
     install_script "${source}"
 done

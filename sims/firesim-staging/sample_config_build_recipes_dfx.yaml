@@ -1,5 +1,5 @@
-# U250 DFX examples. Normal build recipes are unaffected: DFX is opt-in via
-# enable_pr and is supported only by the xilinx_alveo_u250 bit builder.
+# U250 and XB-10 DFX examples. Normal build recipes are unaffected: DFX is
+# opt-in via enable_pr.
 rocket_dfx_base:
   PLATFORM: xilinx_alveo_u250
   TARGET_PROJECT: firesim
@@ -89,3 +89,73 @@ megaboom_dfx_rm_offset65_canary:
   post_build_hook: null
   metasim_customruntimeconfig: null
   bit_builder_recipe: bit-builder-recipes/xilinx_alveo_u250.yaml
+
+xb10_rocket_dfx_base:
+  PLATFORM: corigine_xb10
+  TARGET_PROJECT: firesim
+  TARGET_PROJECT_MAKEFRAG: null
+  DESIGN: FireSim
+  TARGET_CONFIG: FireSimXB10DfxBestOffsetPrefetchingRocketConfig
+  PLATFORM_CONFIG: BaseCorigineXB10Config
+  deploy_quintuplet: null
+  platform_config_args:
+    fpga_frequency: 30
+    build_strategy: TIMING
+    enable_pr: true
+    pr_module_name: ReconfigurablePrefetcher
+  post_build_hook: null
+  metasim_customruntimeconfig: null
+  bit_builder_recipe: bit-builder-recipes/corigine_xb10.yaml
+
+xb10_rocket_dfx_rm_ampm:
+  PLATFORM: corigine_xb10
+  TARGET_PROJECT: firesim
+  TARGET_PROJECT_MAKEFRAG: null
+  DESIGN: FireSim
+  TARGET_CONFIG: FireSimXB10DfxAMPMPrefetchingRocketConfig
+  PLATFORM_CONFIG: BaseCorigineXB10Config
+  deploy_quintuplet: null
+  platform_config_args:
+    build_strategy: TIMING
+    enable_pr: true
+    pr_module_name: ReconfigurablePrefetcher
+    pr_base_recipe: xb10_rocket_dfx_base
+    pr_mode: nonproject
+  post_build_hook: null
+  metasim_customruntimeconfig: null
+  bit_builder_recipe: bit-builder-recipes/corigine_xb10.yaml
+
+xb10_megaboom_dfx_base:
+  PLATFORM: corigine_xb10
+  TARGET_PROJECT: firesim
+  TARGET_PROJECT_MAKEFRAG: null
+  DESIGN: FireSim
+  TARGET_CONFIG: FireSimXB10DfxBestOffsetPrefetchingMegaBoomV3Config
+  PLATFORM_CONFIG: BaseCorigineXB10Config
+  deploy_quintuplet: null
+  platform_config_args:
+    fpga_frequency: 30
+    build_strategy: TIMING
+    enable_pr: true
+    pr_module_name: ReconfigurablePrefetcher
+  post_build_hook: null
+  metasim_customruntimeconfig: null
+  bit_builder_recipe: bit-builder-recipes/corigine_xb10.yaml
+
+xb10_megaboom_dfx_rm_ampm:
+  PLATFORM: corigine_xb10
+  TARGET_PROJECT: firesim
+  TARGET_PROJECT_MAKEFRAG: null
+  DESIGN: FireSim
+  TARGET_CONFIG: FireSimXB10DfxAMPMPrefetchingMegaBoomV3Config
+  PLATFORM_CONFIG: BaseCorigineXB10Config
+  deploy_quintuplet: null
+  platform_config_args:
+    build_strategy: TIMING
+    enable_pr: true
+    pr_module_name: ReconfigurablePrefetcher
+    pr_base_recipe: xb10_megaboom_dfx_base
+    pr_mode: nonproject
+  post_build_hook: null
+  metasim_customruntimeconfig: null
+  bit_builder_recipe: bit-builder-recipes/corigine_xb10.yaml
