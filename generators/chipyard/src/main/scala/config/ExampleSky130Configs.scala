@@ -18,10 +18,8 @@ import testchipip.serdes.{
 }
 import testchipip.soc.{WithNoScratchpads, WithOffchipBus, WithOffchipBusClient}
 
-/** Shared Sky130 tapeout configuration, excluding the processor tile choice. */
-class SoCConfig extends Config(
-  // TODO: Remove simulation collateral for the physical tapeout configuration.
-  new chipyard.sky130.WithRealSky130EFCaravelPOR ++
+/** Shared Sky130 tapeout configuration, excluding the processor tile and IO-cell choices. */
+class SoCConfigNoIO extends Config(
   new chipyard.config.WithBroadcastManager ++
   new WithNoScratchpads ++
   new WithSerialTL(Seq(SerialTLParams(
@@ -40,11 +38,18 @@ class SoCConfig extends Config(
   new chipyard.clocking.WithSingleClockBroadcastClockGenerator(freqMHz = 5) ++
   new WithOffchipBusClient(MBUS) ++
   new WithOffchipBus ++
-  new chipyard.sky130.WithSky130EFIOCells(sim = false) ++
-  new chipyard.sky130.WithSky130EFIOTotalCells(80) ++
   new WithExtMemSize(1L << 30) ++
   new WithCoherentBusTopology ++
   new chipyard.config.AbstractConfig)
+
+/** Shared Sky130 tapeout configuration with the chip-level IO ring. */
+class SoCConfig extends Config(
+  new freechips.rocketchip.subsystem.WithoutTLMonitors ++
+  new chipyard.sky130.WithRealSky130EFCaravelPOR ++
+  new chipyard.sky130.WithSky130EFIOCells(sim = false) ++
+  // new chipyard.sky130.WithSky130EFIOTotalCells(80) ++
+  new chipyard.sky130.WithSky130EFIOTotalCells(45) ++
+  new SoCConfigNoIO)
 
 class Sky130RocketConfig extends Config(
   new freechips.rocketchip.rocket.WithNSmallCores(1) ++
@@ -65,3 +70,11 @@ class Sky130ShuttleConfig extends Config(
 class Sky130DualShuttleConfig extends Config(
   new shuttle.common.WithNShuttleCores(5) ++
   new SoCConfig)
+
+class Sky130RocketConfigNoIO extends Config(
+  new freechips.rocketchip.rocket.WithNSmallCores(1) ++
+  new freechips.rocketchip.rocket.WithL1ICacheSets(64) ++
+  new freechips.rocketchip.rocket.WithL1ICacheWays(1) ++
+  new freechips.rocketchip.rocket.WithL1DCacheSets(64) ++
+  new freechips.rocketchip.rocket.WithL1DCacheWays(1) ++
+  new SoCConfigNoIO)
