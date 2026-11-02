@@ -1,2 +1,0 @@
-SCOPE package=[logpkg.note] n=5
-SCOPE result=12 caller=[PackageTop.boot]

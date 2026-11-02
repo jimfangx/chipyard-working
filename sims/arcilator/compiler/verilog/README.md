@@ -23,10 +23,7 @@ Post-conversion canonicalization processes uses before definitions. The SDK's
 default traversal can repeatedly reassociate arithmetic in an unreachable
 induction loop after pruning its constant entry branch, exhausting memory on
 CVA6's CSR logic. The alternate traversal retains ordinary canonicalization
-without a rewrite cap. `tests/run_native.py --variants cfg-loops` checks both
-RV32 and RV64 specializations of a reduced CSR-style reproducer numerically,
-including disabled branches, locked lanes and pre-edge register sampling.
-One-bit pre/post increment and decrement also write their new value back to
+without a rewrite cap. One-bit pre/post increment and decrement also write their new value back to
 the operand. The SDK computed the correct inverted bit but omitted the
 assignment in that special case. CVA6's two-entry LSU FIFO consequently kept
 both pointers at zero and eventually lost a store completion. The numerical
@@ -46,8 +43,7 @@ package before lowering bodies. Module functions receive those references as
 captures, including through transitive calls. This prevents local-variable
 promotion from replacing retained state with the declaration initializer on
 every invocation. Separate module instances still own separate storage.
-`tests/run_native.py --variants static-storage` exercises these lifetimes through
-native models at O0/O2. Globals retain their original qualified source name,
+Globals retain their original qualified source name,
 including function-local statics, so independently imported variants identify
 the same storage without relying on declaration-order suffixes. The native
 signal-memory pass binds constant-initialized globals using that identity.
@@ -64,8 +60,7 @@ underlying ABI, and retains packed bounds, state domains, argument directions,
 qualifiers, source type spellings, declaration scopes and time units. A module
 attribute carries this information through MooreToCore; the native preparation
 pass restores it onto DPI declarations and call sites before flattening.
-`tests/dpi_abi.py --circt-bin "$CIRCT_BIN"` checks this provenance and the native
-ABI admission guards. Recording a type does not imply its native bridge is
+Recording a type does not imply its native bridge is
 implemented; unsupported signatures still produce explicit diagnostics.
 
 DPI exports retain their original C signature and captured-reference identities.
@@ -93,30 +88,8 @@ cached and locked so concurrent callers cannot use a partly linked executable.
 An existing matching checkout can be supplied with `--circt-source` and
 `--slang-source`; `--slang-build` reuses generated headers from that checkout.
 
-Run the numerical regression with:
-
-```sh
-python3 compiler/verilog/test.py \
-  --circt-verilog /printed/path/arcilator-verilog \
-  --circt-bin "$CIRCT_BIN" \
-  --work generated-src/interface-array-tests
-python3 compiler/verilog/increments_test.py \
-  --circt-verilog /printed/path/arcilator-verilog \
-  --circt-bin "$CIRCT_BIN" \
-  --work generated-src/increment-tests
-python3 compiler/verilog/unpacked_reshape_test.py \
-  --circt-verilog /printed/path/arcilator-verilog \
-  --circt-bin "$CIRCT_BIN" \
-  --work generated-src/unpacked-reshape-tests
-```
-
-`make frontend-test` runs all frontend numerical regressions against the
-automatically selected cached frontend. `make native-test` includes that target.
-
 Packed `case`, `casex` and `casez` operands use their bit representation, including
-structs, arrays and unions. `packed_cases_test.py` checks all 4,096 inputs at O0
-and O2. It requires `--union-library` pointing to the `UnionBits.cpp` pass built
-against the matching SDK; `make frontend-test` supplies this automatically.
+structs, arrays and unions.
 
 The pinned Moore-to-Core conversion also retains constant and dynamic bit/range
 references into packed structs and unions as native reference descriptors.
@@ -125,17 +98,7 @@ and bounds. Packed types containing `time` retain the SDK's conversion rules.
 The build verifies the converter source hash and links the patched converter
 into the frontend alongside the importer.
 
-The regression executes LLVM models against 1,000 independent input vectors
-per case: scalar, singleton, pair, rebased and reversed ranges, multidimensional
-arrays, forwarded ports, sibling instances, and interfaces without modports.
-The last case promotes reference signals after flattening hierarchy.
-An additional 1,000-vector regression checks signed input conversion and signed
-versus unsigned output extension. The complete numerical suite has 9,000 vectors.
-
-`tests/run_native.py --variants procedural` exercises fractional delays, integer
-context time, constant strings, clocked state and diagnostics through the normal
-native importer. `tests/procedural_reference.py --work PATH` checks that source
-independently with Verilator. The separate `compiler/RTL.cpp` pass prepares
+The separate `compiler/RTL.cpp` pass prepares
 processes for the SDK's register and coroutine lowering. Full Radiance simulation
 is not established by the frontend patch; unresolved signals and unsupported DPI
 still fail explicitly in the native importer.
@@ -143,9 +106,7 @@ still fail explicitly in the native importer.
 `nonoverlap.patch` corrects next-cycle implication and followed-by: the extra
 cycle belongs after the antecedent, as `concat(antecedent, delay(true, 1))`.
 The pinned importer instead delayed the antecedent itself, changing the sampled
-condition. `nonoverlap_test.py` checks 20,480 source-level truth values against
-forward-indexed traces, including a multi-cycle antecedent. It is included in
-`make frontend-test`.
+condition.
 
 `unknown-comparisons.patch` resolves case equality and inequality with literal
 X/Z masks before Moore-to-Core converts runtime values to the native two-state
@@ -159,8 +120,6 @@ The converter follows packed bitcasts, concatenations, replication, and integer
 extensions to recover constant masks. Explicit conversion to `bit` clears X/Z
 before comparison. Case-statement patterns use Slang's constant evaluator;
 dynamic patterns retain their evaluation order and captured-variable updates.
-`unknown_comparisons_test.py` exhaustively checks known inputs through 13 bits
-and checks wide inputs through 129 bits, including X/Z literal comparisons.
 The native `bit-builtins` fixture also exercises packed aggregates, `bit`
 storage, and function calls at the normal, O0, and O2 compilation settings.
 The `case-effects` fixture checks that the first match stops later calls and

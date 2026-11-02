@@ -244,7 +244,7 @@ stage timings. On the ThinLTO path, `model.bc` is the verified pre-partition
 seed; the report identifies this explicitly. `ARC_BUILD_JOBS=1` keeps serial
 whole-module optimization. Simulation execution remains single-threaded.
 
-Run `make native-state-partition-test` with the matching CIRCT SDK. Independent
+Independent
 O0/O3 oracles cover full state bytes, old/new versions, derived clocks, opaque
 callback mutations, array/partial aliases and conditional writers. The suite
 also removes actual dependency/version/epoch guards to check that the oracles
@@ -256,7 +256,6 @@ preservation of existing outputs after a failed backend.
 Keep this opt-in until complete matched build/runtime measurements establish
 its value for the intended configuration. Scalar Dhrystone and Towers runs do
 not qualify vector instruction execution on Saturn or every possible model.
-
 
 ## Native callback schedules
 
@@ -356,20 +355,6 @@ establish all-config runtime performance or a new Verilator comparison; general
 VPI and all-config qualification remain incomplete. Commands, hashes, timings
 and full-state evidence are in
 `output/development/native-runtime-stable321-20261022T233015Z/`.
-
-```sh
-source env.sh
-cd sims/arcilator
-make CONFIG=RocketConfig
-make CONFIG=RocketConfig run-binary-fast \
-  BINARY=/absolute/path/to/program.riscv
-make CONFIG=RocketConfig debug
-make CONFIG=RocketConfig run-binary-debug \
-  BINARY=/absolute/path/to/program.riscv
-make native-test
-make integration-test ARC_TEST_CASES="dmi uart network"
-python3 tests/coverage.py --runtime native
-```
 
 Native executables are named `simulator-native-<model-package>-<config>` and
 `simulator-native-<model-package>-<config>-debug`. `make native` and
@@ -1376,10 +1361,7 @@ including functions with an additional empty result.
 The native i0-removal pass also converts every function block and forwarded
 branch/switch operand. Singleton arrays retain their values across coroutine
 CFG edges, nested aggregate constants convert recursively, and nonzero-width
-singleton indices keep bounds checks. `tests/singleton_cfg.py` checks 65,536
-independent results at each of O0/O2, including zero-width arguments and
-preserved function attributes.
-It also outlines large allocated-model procedures using `ARC_MODEL_OPS`
+singleton indices keep bounds checks. It also outlines large allocated-model procedures using `ARC_MODEL_OPS`
 (16,384 operations by default; set 0 to disable outlining). Stack allocations and layout
 anchors stay in their original frame; helpers retain the existing storage
 offsets and remain separate during LLVM optimization. The compiler port budget
@@ -1432,19 +1414,13 @@ This covers cached hardware rather than fresh Scala elaboration, and does not
 establish a speedup for every configuration. Compiler/source fingerprints and
 commands are recorded in
 `output/development/native-shared-main170-20261021T062908Z/work/full-main-Shuttle/report.json`.
-`tests/shared_procedures.py` checks 6,291,456 independent words, nested and
-packed results, pointers, aliases, side effects, multiple returns, ABI and
-workspace-limit fallbacks, and failed-input preservation at O0/O3. Selected
-native regressions enable the pass by default; compare the original ABI with
-`tests/run_native.py --no-share-procedures --variants arrays sensitized-dpi scheduled-dpi latches`.
 Existing builds without settings files rebuild once to establish these dependencies.
 
 Large Boolean lookup tables with at least 256 entries and at least 75% of one
 constant value use a byte fill followed by the original differing and dynamic
 stores. Their storage remains local to the model invocation. The compiler keeps
 small tables and other element types on the existing path.
-`tests/boolean_arrays.py --circt-bin "$CIRCT_BIN"` checks 188,416 independent
-entries and adjacent memory guards at O0/O3. On the same complete cached Shuttle
+On the same complete cached Shuttle
 workload, this change measured 18.03 s against 18.62 s for the baseline, with
 both completing in 30,716 cycles. This is a workload-specific measurement;
 the report is in
@@ -1456,9 +1432,7 @@ retain their pending activation, including transitions that return to an earlier
 value while sampling is held. Startup and unsupported coroutine shapes use the
 existing behavior, and runtime fixed-point convergence remains unchanged.
 `compiler/model.py --freeze-sampling=false` disables this optimization.
-`tests/sampling_phases.py --circt-bin "$CIRCT_BIN"` compares every output and
-callback trace over 800 steps at O0/O2, including initial sampling values,
-transient inputs, clocks, aggregates and real values. The isolated optimization
+The isolated optimization
 measured 15.73 s against 18.54 s on the complete cached Shuttle workload, with
 both completing in 30,716 cycles. Evidence is in
 `output/development/native-sampling-preserve173-20261021T073756Z/work/full-Shuttle/report.json`.
@@ -1489,11 +1463,6 @@ existing behavior.
 `ARC_OUTPUT_CONVERGENCE=1` enables this optimization by default.
 `ARC_OUTPUT_CONVERGENCE=0` disables it and participates in model-build settings;
 the equivalent compiler option is `--output-convergence=false`.
-`tests/convergence.py --circt-bin "$CIRCT_BIN"` checks storage alias/readback
-proofs, source effects, metadata validation, opt-out/observation modes, private
-state, feedback, unknown bindings, late exports and independently owned runtime
-layouts. `tests/build_settings.py` additionally checks real Rocket rebuilds,
-unchanged repeated settings, restoration and execution with the option disabled.
 
 The integrated native184 sources pass all 88 default and three optional native
 variants, the frontend and LLVM ABI/code-generation gates, RTL-library checks
@@ -1525,10 +1494,7 @@ contract before leaving a bare helper call in the combinational dataflow.
 An ordinary DPI call, a familiar symbol name or a no-readback contract alone
 keeps event-sensitive lowering. This removes coroutine observation state for
 calculations implemented by the backend's own byte arithmetic helper.
-`tests/pure_wide_shift.py --circt-bin "$CIRCT_BIN"` checks ten provenance
-cases and 25,344 independently computed values at O0/O3, including six
-widths, chained shifts, dirty padding, stable evaluations, clock/reset sampling
-and two model instances. Unmarked declarations exercise the legacy sensitivity
+Unmarked declarations exercise the legacy sensitivity
 path as a control. All 91 native variants and the frontend, LLVM ABI/codegen,
 RTL-library and coverage-integrity gates pass with these sources.
 
@@ -1540,10 +1506,7 @@ completes the original program with the identical full log; its code-generation
 stage took 6.67 s and its program run 25.70 s. Those O1 measurements are a
 separate correctness run, not a paired performance comparison. These results
 cover cached Shuttle hardware; they do not establish fresh Scala elaboration,
-every configuration or faster-than-Verilator runtime. Evidence is in
-`output/development/native-pure-wide185-20261021T102658Z/work/full-qualified/report.json`,
-`work/pure-wide-tests/report.json`, `full-native-report.json` and
-`work/O1-llc0/report.json` within that same report directory.
+every configuration or faster-than-Verilator runtime.
 
 Fresh RocketConfig, MegaBoomV3Config and ShuttleConfig builds also complete the
 unchanged installed Dhrystone (500 iterations) and Towers (seven discs)
@@ -1581,9 +1544,7 @@ LLVM block limiting counts the selected payload of aggregate `insertvalue` and
 `extractvalue` instructions. Charging the entire SSA container at every field
 update had expanded one scalar-heavy MegaBoom function from 194 blocks to
 5,001; the corrected limiter produces 226 blocks. Actual aggregate memory
-operations and wide arithmetic retain their full payload costs. The regression
-`tests/aggregate_codegen.py` checks 2,097,152 independent lane values at O0/O3,
-including disabled writes and aliased input/output buffers. Its aggregate
+operations and wide arithmetic retain their full payload costs. Its aggregate
 fixture falls from 289 artificial boundaries to two, while the wide-arithmetic
 control retains 97 boundaries.
 
@@ -1618,10 +1579,7 @@ generation, with about 10.8 GiB peak compiler RSS. The preceding native187
 stage measured 342.62 s and about 21.3 GiB. These measurements cover fresh LLVM
 compilation of the saved hardware model; the original 28 C++ driver objects
 were relinked. The unchanged full Towers ELF reproduces the entire native185
-log. `tests/aggregate_stores.py` checks 487,424 lane values and 1,280 ordered
-callbacks at O0/O3, covering aliased and unaligned buffers, intermediate
-snapshots, PHI roots, nested overlapping fields, idempotence, volatile/scalable
-guards, large unsigned array indices and pointer address spaces. All 91 native
+log. All 91 native
 variants and the required frontend/LLVM, RTL-library and coverage-integrity
 gates pass. The installed main compiler also reproduces the complete Rocket
 Towers log at 39,426 cycles with unchanged hardware input and metadata.
@@ -1667,10 +1625,7 @@ the current compiler's evaluations by 27.4% and uninstrumented wall time by
 The stock control successfully uses matching SDK Arcilator, `opt -O3` and
 `llc -O3` on the identical full native-partitioned model input. It retains the
 required byte-pointer wide-value ABI bridge and native metadata-based glue;
-it uses no custom LLVM pass plugins or late model outlining. The upstream
-[arc-tests driver](https://raw.githubusercontent.com/circt/arc-tests/main/rocket/rocket-main.cpp)
-uses two evaluations per cycle and reports time around model evaluation.
-Its custom AXI memory model, reset/diagnostic settings and evaluation-only
+it uses no custom LLVM pass plugins or late model outlining. Its custom AXI memory model, reset/diagnostic settings and evaluation-only
 frequency differ from this complete Chipyard harness and wall-time scope.
 This does not establish a correct two-evaluation replacement scheduler for
 our multi-clock/DPI model. It also does not qualify every Chipyard configuration.
@@ -1879,10 +1834,6 @@ cover the cached Shuttle workload. Reports are in
 and
 `output/development/native-budget65536-179-20261021T081714Z/work/full-Shuttle/report.json`.
 
-`tests/build_settings.py --work /path/to/new/verification` checks real incremental
-Rocket builds, restored baseline artifacts, and CPU execution in a fresh isolated
-checkout using the configured `CIRCT_BIN`, `RISCV` and `CXX`.
-
 `compiler/LargeReturns.cpp` keeps private LLVM structure returns with at least
 64 fields out of the machine calling convention. Eligible direct calls use one
 aligned scratch buffer per caller. Loads capture each result immediately after
@@ -1906,10 +1857,7 @@ call. Public and address-taken functions, must-tail callers and callees, and
 functions requiring special parameter ABI attributes keep their signatures.
 `compiler/llvm.py` applies both passes before lowering wide arithmetic,
 publishing the result only after every stage succeeds.
-`make llvm-native-test` checks 49,152
-numerical results across original and transformed O0/O2 builds, including
-multiple return blocks, nested callers, late extracts, 65-bit fields, pointers,
-floating-point bit patterns, and failure preservation. Another 16,384 results
+Another 16,384 results
 check the combined input and return buffers, nested scratch reuse, pointer
 effects, mixed argument types and preservation of ABI-sensitive functions.
 `compiler/LowerArrays.cpp` adapts the SDK's array lowering for coroutine control
@@ -1943,8 +1891,6 @@ input/output/inout ABI, padding, unrelated inputs and pre-edge register sampling
 A separate 16-stage chain hides every intermediate DPI result from public
 ports. It checks 512 cycles of simultaneous data/clock changes, synchronous
 reset, stable-input callback counts and deferred post-edge activation.
-`tests/run.py --variants dpi-chain` exercises the same chain through the shared
-adapter and an independent SystemVerilog checker.
 Procedural scalar DPI calls in Arc coroutines invoke the SDK's C ABI wrappers
 at their original control-flow point. A compiler regression checks narrowed
 return values, edge/enable gating, and exact callback counts over 100 cycles.
@@ -1958,8 +1904,7 @@ are checked for compatibility while their original directions are still intact.
 The regression checks 2,049 evaluations at O0, O2 and through the native runtime,
 including partial 129-bit writes, Boolean outputs, interleaved formals, both
 aliases, inout copy-in/out and local reference-buffer identity.
-`tests/seeded_dpi_poison.py --circt-bin "$CIRCT_BIN"` also fills SDK integer
-allocations with ones before their copy-in stores. The initialized model still
+The initialized model still
 passes at O0 and O2; removing just output seeding fails deterministically at
 both levels. This negative check uses defined buffer contents throughout.
 Non-suspending SystemVerilog tasks inline at their original call sites before
@@ -2023,10 +1968,7 @@ write conflicts, read-write ports, and old/new read-during-write modes are
 preserved. Unwritten words use native two-state zero. Initialized memories,
 externally referenced symbols, unsupported latencies, and unrecognized users
 retain their original compiler representation. The hybrid build retains its
-existing memory lowering. `python3 tests/run_native.py --variants sparse-memory`
-checks synchronous and asynchronous reads, non-byte masks, multiple ports,
-independent clocks, invalid addresses, and sparse capacity above a trillion
-words at O0 and O2.
+existing memory lowering.
 
 Conditional writes retain a reaching definition even when the process has no
 later read of that register. This lets uninitialized registers with enabled
@@ -2034,9 +1976,6 @@ writes preserve their prior value while disabled. `write-only` checks 13/65-bit
 registers, independent clocks and holds at normal/O0/O2 settings. Partitioning
 also checks distinct captured inputs and escaping results before rejecting an
 oversized operation bundle: internal CFG values do not consume hardware ports.
-`tests/partition_boundary.py` checks the real limit and optional before/after
-comparisons; previously accepted fixture and complete Rocket/ManyPeripherals
-partition outputs remain byte-identical in the recorded equivalence run.
 
 `native.py` generates connection tables from the actual compiler state layout
 and `partition.json`. `native_build.py` compiles the selected original drivers
@@ -2050,9 +1989,7 @@ changes while the input clock is high cannot open or close the gate.
 Nonstandard interfaces and analog connections retain their native bindings.
 The partition CLI enables this with `--native-combinational-models`; the native
 Makefile supplies it automatically, while the hybrid path keeps its existing
-boundaries. `tests/run_native.py --variants compiled-combin` checks chained
-gates, IO enables, inverted clocks, asynchronous resets and edge counts against
-an independent oracle, including enable changes during the high clock phase.
+boundaries.
 
 The bindings currently include:
 
@@ -2084,11 +2021,7 @@ The bindings currently include:
   change detection when merged with a memory written by the same combinational
   process. Unsupported reference escapes and nonzero physical delays retain
   explicit errors before any root of their reference component is changed.
-  `python3 tests/run_native.py --variants cfg-memory` checks branch merges,
-  loop-carried ranges, clipping, blocking/NBA order, peer sampling and implicit
-  sensitivity at O0/O2, plus rejection without partial mutation.
-- Transparent latches, including the original Ibex clock gate, settle before
-  clocked models sample their inputs. Blocking and nonblocking latch writes
+  Blocking and nonblocking latch writes
   retain their distinct scheduling, packed initializers, and hold behavior.
   Unconditional combinational signal feedback preserves its initializer before
   the SDK promotes signals to SSA.
@@ -2114,8 +2047,6 @@ byte; dynamic string operations retain their ordinary lowering. Selected sources
 a compilation unit and receive the `ARCILATOR` macro. Native builds take FPnew
 packages from the selected blackbox resources, avoiding duplicate global
 Radiance package definitions while retaining the FPU preprocessor defines.
-`tests/package_resources.py` checks this selection, the original vendor package
-constants, and the package flags used by the hybrid and Verilator flows.
 Interface reference signals
 are promoted after inlining; clocked state is inferred without removing its
 diagnostics. Timed and effect-only processes use Arc coroutines, including
@@ -2168,18 +2099,12 @@ String inputs use immutable C strings. Returned and output/inout strings are
 copied into the model's string pool before subsequent C calls can overwrite
 their backing buffers; null pointers become empty strings. The native storage
 handle remains separate from the original SystemVerilog ABI metadata.
-`tests/run_native.py --variants string-imports` checks C-name aliases, pure and
-effectful calls, UTF-8 and empty strings, borrowed input pointers, mutable C
-buffers, reset/enable gating, retained values and model recreation at normal/O0/O2.
 Opaque `chandle` inputs, outputs, inouts and returns use `void *` in C, as
 specified by the [DPI type mapping](https://www.accellera.org/images/downloads/standards/sce-mi/SCE_MI_v20-3-22-2007.pdf).
 The compiler transports their pointer bits through 64-bit native storage on
 the supported 64-bit host. C retains ownership of the pointed-to objects.
 Null handles, equality tests, conditional transport and captured handles in
 SV exported functions preserve their values across calls.
-`tests/run_native.py --variants handles` checks the public C ABI in both
-directions, pointers above 32 bits, C-name aliases, mixed string/handle calls,
-reset/enable gating and model recreation at normal/O0/O2.
 Context function imports bind to their physical declaration instance before RTL
 flattening. This includes hardware and initial processes, shared module definitions,
 hierarchical SV function calls, generated blocks, escaped instance names, and
@@ -2190,10 +2115,7 @@ its original arguments. Context calls restore the selected scope after C returns
 including callbacks that select another scope for nested SV calls. Compiled SV
 exports and imports share the same native scope objects.
 
-`tests/run_native.py --variants context-scopes` checks two copies of a shared RTL
-hierarchy, generated/escaped leaves, initial callbacks, C-name aliases, package
-calls, private SV functions, nested C/SV callbacks, reset/enable behavior, scope
-user data and model recreation at normal/O0/O2. Compiler regressions check late
+Compiler regressions check late
 uniqued declarations, preserved frontend provenance, nested function inlining,
 hierarchy mapping and idempotence. Recursive context SV functions still require
 native call frames and fail explicitly. Imported tasks, packed returns,
@@ -2209,12 +2131,6 @@ DPI declaration. Output and inout arrays are copied back before RTL continues.
 Aliases may use different SV bounds with the same C element type; conflicting C
 pointer element types or constness fail explicitly.
 
-`tests/run_native.py --variants unpacked-imports` checks scalar arrays, negative
-and descending bounds, 2D 65/129-bit vectors, padding, unknown-bit masking,
-input/output/inout, context scope, exact activations and model recreation at
-normal/O0/O2. `tests/native_unpacked.py` checks shape/type/direction admission,
-C prototype compatibility, preserved metadata and idempotence.
-
 Open-array imports accept fixed unpacked actual arrays of these same element
 representations, including mixed fixed/open dimensions. Each call retains its
 actual bounds and uses an opaque `svOpenArrayHandle` at the C boundary. The
@@ -2224,12 +2140,6 @@ handles refer to temporary C buffers whose values are copied back before RTL
 continues. Source formal metadata stays separate from the actual-shape transport
 metadata. Existing SimDRAM descriptors keep their byte payload behavior.
 
-`tests/run_native.py --variants open-arrays` checks negative/descending bounds,
-1D–3D arrays, mixed fixed/open dimensions, C aliases with different actual bounds
-and lengths, 65/129-bit vectors, scalar logic and unknown masking, partial output
-initialization, context scope and model recreation at normal/O0/O2.
-`tests/native_open.py` checks provenance and prototype guards and the standalone
-runtime API, including generic 4D indexing and selects across word boundaries.
 Fixed and open unpacked-array imports also support `chandle` and `string`
 elements. Chandles use native pointer entries; C retains ownership of the
 pointed-to objects. String entries use C string pointers, and output/inout
@@ -2239,12 +2149,6 @@ array elements while the original element kinds and actual bounds remain in
 separate ABI metadata. Constant default array constructors are materialized
 before state inference; effectful initialization expressions remain runtime data.
 
-`tests/run_native.py --variants pointer-arrays` checks fixed and open arrays,
-2D chandles, 3D strings, UTF-8 and empty/null strings, partial output defaults,
-borrowed mutable C buffers, shifted-bound aliases, context scope, reset/enable
-behavior and model recreation at normal/O0/O2. `tests/native_pointer_arrays.py`
-checks recursive ABI marking, prototype/context provenance, typed default
-initializers and retained initializer effects.
 Dynamic actual arrays, open packed dimensions, and other unsupported element
 representations still need compiler support.
 
@@ -2260,9 +2164,7 @@ fail explicitly. These are source-selection lists: frontend and compiler flags
 continue to use their existing Make arguments. RTL import, clock/DTM contract
 selection, library discovery and C/C++ driver compilation share this reader.
 Make fingerprints listed HDL and driver inputs separately, so edits in nested
-lists invalidate the relevant build stages. Run `make native-filelist-test` for
-path/comment/recursion, incremental Make and real native C/C++ driver-link tests.
-C drivers inherit shared `-I`, `-D` and `-U` options in both joined and
+lists invalidate the relevant build stages. C drivers inherit shared `-I`, `-D` and `-U` options in both joined and
 separated forms, retaining quoted paths and macro values as single arguments.
 C++ language-standard options stay on C++ compilations; missing shared-option
 operands fail before compilation or output replacement.
@@ -2273,9 +2175,7 @@ used by the ported drivers. Native VPI provides argument/product queries through
 `vpi_register_cb`, cancellation through `vpi_remove_cb`, and error reporting
 through `vpi_chk_error`. An embedded `Runtime(0, nullptr, ...)` exposes a valid
 empty command line: its argument query succeeds with zero `argc` and null
-`argv`. `make native-vpi-test` checks this with the original UART driver as
-well as empty/nonempty argument transitions and borrowed-pointer identity.
-A linked, null-terminated C `vlog_startup_routines`
+`argv`. A linked, null-terminated C `vlog_startup_routines`
 array runs once per process before binding initialization. Start callbacks run
 after binding initialization and before RTL initial blocks and SDK initialization
 hooks. End callbacks run after RTL finalization, while model storage and DPI
@@ -2296,9 +2196,7 @@ handles expire. VPI delivery does not establish an implicit DPI scope; a client
 calling a scope-dependent export must select its scope explicitly. No callback
 dispatch is added to the per-cycle scheduler, and the unused registry is lazy.
 
-Run `make native-vpi-test`, or `python3 tests/vpi_lifecycle.py` with `CIRCT_BIN`
-set, for the standalone C/C++ ABI, cancellation/lifetime/error, real SDK Runtime
-and complete run-loop waveform checks. The callback-enabled full original
+The callback-enabled full original
 Shuttle Dhrystone qualification preserves all 189,617 final state bytes, the
 whole original log, evaluation/SDK counts and six independently decoded numerical
 results. Balanced Rocket/Shuttle Dhrystone and Towers comparisons with callbacks
@@ -2336,8 +2234,7 @@ describe individual frontend compilations; they do not establish the assembled
 model's global time precision or optimized storage correspondence. The normal
 default is off, and these records do not enable the unfinished VPI APIs.
 
-Run `make native-source-metadata-test CIRCT_BIN=/path/to/sdk/bin`; the test builds
-the matching patched frontend if needed. `ARC_SOURCE_METADATA_FRONTEND=/path/to/arcilator-verilog`
+`ARC_SOURCE_METADATA_FRONTEND=/path/to/arcilator-verilog`
 selects an already-built matching frontend. The focused fixtures check source
 types/ranges/shared links, all 18 time-precision decades, source-only program
 scopes, separate compilation units, invalid output paths and unchanged original
@@ -2404,40 +2301,28 @@ flattening. JTAG's 100 ps input/output delays retain femtosecond event origins.
 Each of the five output assignments keeps an independent inertial deadline:
 an unchanged pin retains its pending transition across driver calls, and a
 short pulse returning to its delivered value is cancelled. The 32-bit exit
-value is one delayed assignment. Run `make native-jtag-test` for standalone
-real-runtime checks of independent outputs, fractional delays, TDO pulses,
-reset history, clock division, sticky initialization, DPI scopes and model
-recreation at O0/O3/UBSAN, including timing fault controls.
+value is one delayed assignment.
 
 The older Sodor `SimDTM` binding also retains femtosecond origins for its
-100 ps input and output delays. The `dtm` variant of `tests/run_native.py`
-checks callbacks immediately before and after fractional input deadlines,
-all six delayed outputs, registered reset, output width masking and model
-recreation with a compiled CIRCT fixture and the original `debug_tick` ABI.
+100 ps input and output delays.
 
-Run `make native-predictor-test` to check `BranchPredictorHarness` and
-`BTBHarness` against BOOM's unchanged `predictor_sw.cc` and `btb_sw.cc` drivers.
 The standalone SDK Runtime tests 64-bit PC/history/target arguments, prediction
 before updates, saturating learning, BTB hits, reset/enable behavior, DPI scopes,
 deferred output commits and model recreation at O0/O3/UBSAN. Fault controls
 reject reversed callbacks, truncated PCs and premature output writes. This
 checks the native bindings directly without elaborating a hardware configuration.
-`make native-predictor-model-test` runs the same original-driver checks through
-a compiled MLIR fixture: hardware partitioning, Arc/LLVM lowering, O0/O3 model
-code generation and generated native port mappings. It checks the generated
+It checks the generated
 64-bit interface metadata and rejects deliberately swapped PC/history mappings.
 The two targets share their behavioral oracle and recreate both model contexts.
 
-`make native-block-device-test` compiles an MLIR fixture with the original
-`SimBlockDevice.cc`/`blkdev.cc` and FESVR context library. O0/O3 checks cover
+O0/O3 checks cover
 tag parameters, 32/64-bit arguments, stalled responses, interleaved tagged
 writes, queue/partial-write retention across reset, disabled mode and complete
 2 KiB disk-image comparisons. Fault controls reject truncated data, swapped
 tags and ignored response backpressure. The test uses FESVR from `RISCV` or
 Chipyard's local conda toolchain; it builds no firmware or hardware configuration.
 
-`make native-network-test` compiles an MLIR fixture with the original
-`SimNetwork.cc`/`device.cc`/`switch.cc` and FESVR context library. An empty
+An empty
 device name selects the original switch's local path, which opens no TAP
 interface. O0/O3 tests send two packets to the driver's actual random MAC and
 compare every received word and last-flit flag against independently constructed
@@ -2447,8 +2332,7 @@ DPI scopes and deferred output commits. Fault controls reject truncated transmit
 data, callbacks during reset and a corrupted MAC. It uses the same FESVR discovery
 as the block-device test and builds no firmware or hardware configuration.
 
-`make native-debug-rob-test` compiles all three DebugROB bindings with the original
-Rocket Chip `debug_rob.cc` driver. O0/O3 checks cover all eight 64-bit payload
+O0/O3 checks cover all eight 64-bit payload
 words, full-width tags, two hart queues, waiting entries, out-of-order writeback,
 already supplied data and exception/interrupt fields. Push callbacks run on rising
 edges; pop callbacks run on falling edges and publish on the next rising edge.
@@ -2457,8 +2341,6 @@ after release, matching `debug_rob.v`. The test compares every byte of all 27
 published traces and rejects payload truncation, tag truncation, the wrong pop
 edge and missing reset history. It builds no firmware or hardware configuration.
 
-`make native-traffic-test` compiles TrafficEval ingress and egress with the
-original Constellation `TrafficEval.cpp`, `netrace.c` and `queue.c` drivers.
 O0/O3 checks cover the embedded multiline configuration, `+eval_params` file
 override, packet head/tail and unique IDs, backpressure, reset retention, deferred
 outputs, success/throughput-failure flags and timeout cycles above 32 bits.
@@ -2468,8 +2350,7 @@ truncated cycles and clearing retained ingress payload during reset. This uses
 the original random-traffic path; netrace file playback is not covered. It builds
 no firmware or hardware configuration.
 
-`make native-clock-test` extracts the original inline clock sources from Rocket
-Chip and Chipyard. It imports Rocket Chip's fixed clock as RTL and connects the
+It imports Rocket Chip's fixed clock as RTL and connects the
 harness and plusarg clock bindings through the compiled native model. O0/O3
 checks distinguish assignment-delay sampling from delay-before-assignment
 sampling while power and gate change between edges, including fractional
@@ -2478,8 +2359,7 @@ peer register counts and complete event traces are checked just before, at and
 after deadlines. Fault controls move the original assignment delay and ignore
 the native clock gate; both must fail. It builds no firmware or configuration.
 
-`make native-memtrace-test` compiles the Radiance trace reader/logger bindings
-with their original C++ drivers. The initialization parameters are narrowed to
+The initialization parameters are narrowed to
 the declared DPI `bit` inputs: `HAS_SOURCE=2` selects no source column, while
 `IS_RESPONSE=3` passes one to the logger. O0/O3 checks cover both file formats,
 three packed lanes, full 64-bit cycles/addresses/data, stalled reads, reset
@@ -2488,21 +2368,18 @@ and logger-file byte. Fault controls restore either flag-conversion bug, ignore
 read stalls or reverse lane order; all must fail. It builds no firmware or
 hardware configuration.
 
-`make native-declaration-dpi-test` imports and compiles read-only declaration
-initializers containing context-free DPI function calls. Closed dependency graphs
+Closed dependency graphs
 run once before time-zero processes, preserve callback order and share results
 without repeating effects. Frontend provenance retains initialization when an
 unused declaration is removed. O0/O3 tests check 64-bit values, dependent `chandle`
 calls, unused effects, independent instances, model recreation, and every output
 byte across clock, reset and held evaluations. Ordinary initial and clocked DPI
 calls retain their execution points. Duplicate-callback and wrong-observer faults
-must fail. `tests/signal_initializers.py` retains diagnostics for input-dependent,
-unbound contextual, task, cyclic, escaping and effect-reordering cases. The
+must fail. The
 standalone snapshot pass also rejects writable DPI values when native storage
 lowering is not enabled.
 
-`make native-context-declaration-dpi-test` extends declaration initialization to
-bound contextual DPI functions. Native scope binding outputs are initialized
+Native scope binding outputs are initialized
 before the model's startup function and can be captured there. The compiler
 checks their provider, width, use and partition contracts, then lets the matching
 SDK lower state with normal verification. Ordinary model inputs retain their
@@ -2512,8 +2389,7 @@ user data, registry cleanup and model recreation. Complete output traces match;
 a fault that swaps physical scope bindings must fail. No runtime change is
 needed for these startup captures.
 
-`make native-writable-declaration-dpi-test` checks declaration DPI values that
-subsequent RTL or exported SV functions can modify. The compiler writes each
+The compiler writes each
 initializer result into native signal storage before dependent callbacks run.
 A later initializer resamples that storage after an intervening callback writes
 it through an SV export. Native scope and memory-handle inputs are checked
@@ -2526,8 +2402,7 @@ wrong observer data, swapped scopes, omitted startup writes, and stale reads.
 This supports closed, straight-line declaration dependency graphs; general
 runtime initialization and cyclic or input-dependent graphs remain open.
 
-`make native-global-declaration-dpi-test` checks closed package/global
-initializers containing context-free DPI functions. Global values use the same
+Global values use the same
 shared native allocation in every imported specialization and physical instance.
 Each allocation claims its initializer once per model. The complete expression
 and its assignment run under that claim before module declaration startup;
@@ -2569,8 +2444,6 @@ Wide storage is allocated only for wide nets; the
 existing scalar resolver is unchanged. More complex electrical analog behavior
 is unverified.
 
-Run `make native-analog-test CIRCT_BIN=/path/to/sdk/bin`, or
-`python3 tests/analog_nets.py --circt-bin=/path/to/sdk/bin --work=/tmp/analog-test`.
 The focused tests use the real SDK runtime, 21,923 checks at O0/O3, independent
 per-bit resolution and integer oracles, and verified HW partition/factory/VCD
 fixtures at widths 7, 64, 65, 73 and 257, including 128-bit parameters on narrow
@@ -2615,974 +2488,13 @@ standalone driver currently uses the standard 1 ns root clock and 777.7 ns reset
 delay; custom `CLOCK_PERIOD`, `RESET_DELAY`, `PRINTF_COND`, and `STOP_COND` macro
 overrides still require parity work. State initialization is deterministic zero.
 
-## Validation
-
-The native `plusarg_reader` accepts integer `%d`, `%h`, `%x`, `%o`, and `%b`
-conversions in either case, zero modifiers such as `%0H`, and escaped `%%`
-characters in argument prefixes. Values and defaults retain the configured bit
-width, including widths greater than 64 bits.
-
-`make test` (also `native-test`) compiles and executes fixtures without Verilator. They cover
-2,051-bit integer, array, and nested-structure asynchronous registers, resets
-asserted between clock edges,
-synchronous state, the original TraceROM driver with byte masks/final-beat and
-backpressure checks, RTL parameter specializations and nested hierarchy,
-bit/clock conversions, edge sampling, and normal/debug VCD timestamps and dump
-start behavior. Additional fixtures check the older Sodor DTM's edge and delay
-semantics, original Radiance trace and C++ emulator/fuzzer wrappers, wide packed
-lanes, reset/backpressure, unused root-clock scheduling, arbitrary-width integer
-plusargs, reset-gated print/stop controls, 33,000 input ports, shared diagnostic
-literals, singleton and repeated array concatenation, and array state/read/reset
-semantics. The repeated-array case reproduces the BOOM4 type error in the stock
-pipeline and checks all resulting bits after clock edges and resets.
-A cyclic-array fixture checks observed lanes, opaque fallback arrays, both mux
-branches, update order, resets and registered sampling over 512 cycles. Separate
-guards check declared alias types, nonzero slice offsets and lane order, preserve real scalar and
-array feedback, partial/dynamic/out-of-bounds accesses, whole-array observers and
-DPI effects, and reproduce the original false-loop failure without the rewrite.
-The imported SystemVerilog procedural fixture checks native state together with
-one diagnostic per edge, constant string formatting, 1.5 ps autonomous delays,
-integer `$time` rounding, packed arrays/structures, and unconnected output ports.
-The optional SV comparison runs that same source in Verilator. The native
-fixture builds and runs without Verilator.
-Another fixture checks a native-to-RTL-to-native pipeline with two independent
-instances, packed return structures, hierarchical type queries, and state
-sampled before the clock edge.
-The conditional-signal fixture checks a nonzero 129-bit output-port initializer,
-reset, write enable, timed suspension, retention between writes, and a native
-flip-flop sampling the old value on the same edge as a nonblocking write.
-The latch fixture checks 3,072 steps through the original Ibex clock gate,
-high-phase hold, test enable, packed/structure initializers, transparent data,
-nonblocking publication and simultaneous peer sampling. A feedback fixture
-checks 512 cycles of explicit scalar/129-bit initialization, set/clear/hold,
-native wire feedback and peer sampling, then requires an oscillator diagnostic.
-Another fixture checks 4,096 cycles of solver-proved 13-bit feedback. Structural
-guards preserve genuine state, unsupported operators and effectful dependencies,
-and test literal ownership at three partition sizes.
-A scope fixture checks two native instances through initialization,
-combinational evaluation, sampling, timer queries and timed events, including
-lookup identity, nested calls, exception restoration, thread isolation and
-cleanup when scopes are destroyed.
-A pointwise-property fixture checks exact assertion callback counts on positive,
-negative and both clock edges, pre-edge register values, reset and enable
-suppression, and failing termination through the standalone run loop. Separate
-truth tables check 160 Boolean property results while preserving assertion
-edges, enables and labels; guard cases retain genuine temporal cones and shared
-temporal users.
-A signal-coherence fixture checks five equivalent register drivers, a 44-bit
-counter with wrapping feedback, pre-edge sampling, reset, 257-bit and aggregate
-undriven outputs, partially driven nets, a nonzero 129-bit initializer, and
-complete struct assignments across four branches. Guard checks preserve
-different clocks, data, resets, presets, conditional or delayed writes, escaped
-references, partially assigned fields, shared reads and opaque effects. Removing
-struct-update motion reproduces the unresolved local aggregate signal.
-A separate partial-write fixture checks bit banks, packed array lanes, nested
-struct fields, two independent clocks, conditional enables, repeated reset,
-feedback, and dynamic reads between edges against an independent state model.
-It also checks a combinational prefix tree with separate packed-array writers.
-Startup tests check nonzero scalar and memory initialization before the first
-clock, including 13-bit lanes, 8- and 17-entry memories, wide induction variables,
-wrapping loops, independent clocks and instances, dynamic writes, enables, and
-synchronous resets. Every memory location is checked between clock edges.
-Port-connection tests check two widths and parameter specializations, input and
-output truncation, signed and unsigned extension, nonzero omitted-input defaults,
-floating inputs, omitted outputs, escaped keyword ports and pre-edge sampling.
-Another native case checks Boolean, signed-integer, real, escaped-string and
-UTF-8 parameters. Constant string tests cover all six comparison predicates,
-prefixes, unsigned bytes and embedded nulls while retaining dynamic comparisons.
-A CSR-style loop fixture checks 1,024 cycles of RV32 and RV64 specializations,
-constant-disabled loop bodies, locked lanes, dynamic partial writes and
-pre-edge sampling. Its source reproduces an SDK canonicalizer allocation
-runaway; post-conversion cleanup now processes uses before definitions.
-The vendor scan regression checks 18 actual `VX_scan` specializations across
-widths 5, 9 and 17, XOR/AND/OR operations, and both directions against independent
-bitwise prefix calculations. A separate fixture checks two generated banks of
-conditional dynamic bit writes, nested branches, input changes between edges,
-and registered sampling. It reproduces unresolved combinational writes when the
-drive-hoisting extension is removed.
-The shifted-prefix fixture checks 66 recurrences over 1- through 129-bit values,
-including OR/AND/XOR, both directions, stride 1/3 and registered sampling.
-Independent truth tables cover 2,180 cases with nonunit and full-width strides;
-guards retain unresolved feedback and operation attributes. The original
-`VX_rr_arbiter` regression checks 14 specializations over widths 1/2/3/4/5/8/17,
-with lock/unlock, idle behavior, reset and pre-edge sampling.
-Run `python3 tests/run_native.py --variants scan radiance-cache rr-arbiter` for the vendor
-regressions; these require the Radiance/Vortex sources to be checked out.
-`python3 tests/vortex_dpi.py --circt-bin "$CIRCT_BIN"` links native LLVM models
-against the original Vortex `util_dpi.cpp` for XLEN 32 and 64. It checks
-signed/unsigned arithmetic, zero divisors and signed overflow, UUID state and
-reset, narrowed returns, and exact clock/enable callback counts over 1,024 cycles
-per width. Disabled arithmetic is checked directly against caller-owned storage.
-`--unwritten-outputs` additionally invokes those callbacks with a false input
-enable through the compiled model. It checks that their unwritten outputs use
-fresh zero-seeded storage, while a clocked call suppressed by its call enable
-retains its previous result. The original driver source remains unchanged.
-The same regression checks the original delayed assertion's native scope name
-and failing termination. `--opt-level 0` also exercises the unoptimized ABI.
-The procedural DPI regression switches between two aliases for each of its
-stateful scalar and mixed-output C functions. Both aliases run with exact call
-counts at optimization levels 0 and 2. Declaration guards check all argument
-directions, renamed formals, implicit C names, independent nested scopes and
-conflicts in types, argument order, directions, arity and semantic attributes.
-Input-sensitive lowering is verified for the tested combinational and bare
-unclocked calls. The native ABI regression elaborates actual SV imports and
-executes their C functions through the normal importer and native scheduler.
-It checks C-name aliases, signed/unsigned atoms, scalar versus one-bit packed
-arguments, 32/33/65/129-bit vectors, output initialization, inouts, four-state
-word layout, and IEEE payloads. Stable evaluations and changes confined to
-unused input padding must preserve exact callback counts. Partial observation
-words are masked through an opaque legal-width helper before coroutine
-snapshots, so padding cannot become an RTL input event. The provenance
-regression checks typedefs/enums, packed ranges and state domains, qualifiers,
-scopes, timescales, bridge retention, and explicit unsupported-signature guards.
-Full GPU runtime behavior remains unverified.
-Wide-shift tests compare 132 vectors with Python integers and a separate SV
-reference, including padding bits and shift amounts above the port width. A
-registered result checks synchronous reset and sampling at the clock edge.
-The byte-ABI helper also has 8,280 Python-reference checks across 92 widths,
-including byte and word boundaries, arithmetic shifts, and dirty padding.
-Dromajo's SDK and the Radiance Rust interfaces use ABI mocks in the main
-fixture suite. Separate tests exercise all three interfaces with their real
-libraries; full emulator workloads remain unverified.
-The separate `tests/cyclotron.py` regression links the original `SimMemFuzzer.cc`
-to the real Cyclotron Rust library. It passes 500,009 callbacks and 126 reset
-edges, exercises backpressure, and drains balanced request/response counts on
-all three packed lanes. It also checks that outputs update only on falling
-edges. Frozen sources, the library and executable, and the full compressed log
-are in `output/development/native-cyclotron-real-20261017T101829Z/report.json`.
-Run it with `--circt-bin "$CIRCT_BIN" --library /path/to/libcyclotron.so`.
-Adding `--kind emulator` compares 9,728 outputs over 512 cycles against direct
-calls to the original emulator driver in an independent process. Both paths
-make exactly 493 calls, preserve reset guards, and update only on positive
-edges. The reference exercises 167 distinct instruction addresses. The combined
-real-library evidence is in
-`output/development/native-cyclotron-both-20261017T102518Z/report.json`.
-`cargo build --lib` in `generators/radiance/cyclotron` builds that library.
-The `memfuzz` integration case exercises `RadianceFuzzerConfig`; pass the library
-and its runtime search path through `EXTRA_SIM_LDFLAGS` when building that config.
-An earlier full-config run passes with DRAMSim2 in 1,000,802 root cycles. Its report is
-`output/integration/20261017T104302696882Z-n1q7hcek/report.json`. The original
-one-million-cycle attempt remains in its report: the driver's unchanged
-500,000-tick stopping point needs a little over one million 1 ns root cycles
-with its 2 ns device clock, reset and response draining.
-
-`tests/dromajo.py` links the original TestchipIP wrapper to the real Dromajo SDK.
-An independent Python RV64 oracle supplies 434 steps across three retirement
-slots, check masks, reset gaps, integer arithmetic, a store/load, a machine timer
-interrupt and ECALL handling. The original driver and native binding both accept
-the complete trace. A corrupted result is rejected after 299 callbacks; the
-native case checks that SDK status 8191 reaches the standard runtime's failure
-status. Frozen inputs, sources, SDK, executables and logs are in
-`output/development/native-dromajo-real-20261017T105812Z/report.json`.
-The test uses SDK revision `7062d33ad00ebc1a1f71fe8b13f1f5a53c99a12f`, which retains
-the `--mmio_range` option required by TestchipIP. Pass `--circt-bin`, `--riscv`,
-`--sdk-source` and `--library` to the test. Build the SDK with a matching compiler;
-the local GCC build also needs `gcc-ranlib` to index its LTO archive.
-
-The native latch/feedback development run records 38 passing native variants
-and passing Rocket/DRAMSim2/TSI, UART, and JTAG workloads. All checked executables
-have no Verilated runtime symbols. Source snapshots, artifact hashes, logs, and
-the failed Ibex RV32 workload are retained in
-`output/development/native-feedback-20261017/report.json`. These results cover
-the recorded fixtures and workloads; they do not establish every Chipyard config.
-
-The subsequent CFG/zero-width development run passes all 39 native variants,
-including the RV32/RV64 loop fixture, original Radiance cache, vendor scan and
-round-robin arbiter. Its report is
-`output/development/native-cfg-final-20261017/report.json`, with source snapshots,
-artifact hashes and archived executables. Every executable has no Verilated
-runtime symbols. The matching frontend also passes 9,000 independent interface
-and signed-port-conversion vectors.
-
-The memory/aggregate run passes all 41 native variants, including mixed-write
-reference storage and native file output. Compiler preflights also check nested
-execute regions and aggregate constants at O0/O2. Its frozen sources, logs,
-123 artifact hashes and executables are recorded in
-`output/development/native-memory-aggregate-20261017T100241Z/report.json`.
-All archived executables have no Verilated runtime symbols. Full-system reruns
-are recorded separately; the fixture suite does not establish every config.
-The matching backend also passes Rocket, Ibex, asynchronous-reset Rocket,
-multiclock Rocket, UART and JTAG in
-`output/integration/20261017T100328860275Z-n72voxef/report.json`.
-The complete RadianceClusterConfig compiles through LLVM IR generation, including
-1,602 combinational DPI regions and 256 seeded DPI outputs. That compiler-stage
-result is recorded in
-`output/config-sweep/20261017T100818204882Z-ha9p89yf/report.json`; full GPU runtime
-remains unverified.
-The original eight-core `RadianceFP16ClusterConfig` also passes native RTL
-import after static task formals and their startup initializers are preserved.
-The complete original generated RTL and flags retain their input hashes.
-The reduced failures, independent Icarus oracle, O0/O2 runtime checks and original
-config import are retained in
-`output/development/native-static-formals-prototype-71-20261019T015825Z/report.json`.
-A fresh build through the normal production frontend completes the full hardware
-partition and LLVM generation on native71. It outlines 2,713,021 operations into
-685 HW modules and emits 1,653 model procedures, retaining all eight cores and
-both vendor caches. The reports are
-`output/development/native-radiance-fp16-hw-71-20261019T022103Z/report.json` and
-`output/development/native-radiance-fp16-llvm-71-20261019T024531Z/report.json`.
-Machine-code generation and native simulator linkage also complete with the
-original selected C++ drivers and no Verilated symbols. The simulator-stage
-report is
-`output/development/native-radiance-fp16-simulator-71-20261019T030452Z/report.json`.
-GPU runtime remains unverified; the original RV32 ADD workload is running with
-an explicit check of the original SimTSI software exit signal, so a vendor RTL
-`$finish` alone cannot establish a pass.
-
-Native72 also preserves strings inside nested structs and arrays, including
-member references, whole-struct copies and constant default initialization.
-All 71 native variants pass, alongside the standard frontend/LLVM checks and
-Rocket hello/JTAG workloads. The evidence is in
-`output/development/native-string-struct-promotion-72-20261019T032611Z/report.json`.
-The original `SmallNVDLARocketConfig` now completes native RTL import and hardware
-partitioning with its shared `$timeformat` state retained. Its original native71
-failure and successful hardware build are recorded in
-`output/development/native-string-struct-prototype-72-20261019T032402Z/report.json`.
-The subsequent LLVM build stops at an unlowered original `$test$plusargs` call;
-SmallNVDLA simulator linkage and runtime remain unverified.
-
-Native73 lowers literal `$test$plusargs` queries through the existing native VPI
-argument interface, preserving prefix matching and the original assertion
-controls. All 72 native variants pass, including initial and clocked queries
-at normal/O0/O2 settings; 13 separate cases also match Icarus. Standard
-frontend/LLVM checks, Rocket hello and JTAG pass. Sources, executable hashes,
-logs and earlier failures are retained in
-`output/development/native-test-plusargs-promotion-73-20261019T034616Z/report.json`.
-The original SmallNVDLA LLVM build then reaches an unsupported `%m` hierarchy
-formatter in its diagnostic prints; its full runtime remains unverified.
-
-Native76 resolves `%m`/`%M` source paths through imported-RTL and whole-design
-flattening, including generated/escaped instance names and named block, task
-and function scopes. Runtime constant folding retains function print effects;
-physical function inlining applies native print/stop controls and ends a
-non-returning fatal/finish process before returning to the native scheduler.
-All 75 native variants pass. The unchanged three-message SV scope test matches
-Icarus byte for byte at O0/O2; expanded lexical and function-effect tests pass
-at normal/O0/O2, including quiet printing and stop-callback gating. Nested
-blocks inside tasks/functions follow the separate stock diagnostic: Icarus 12
-omits those suffixes. That diagnostic is optional; native builds use no
-Verilator. Standard frontend/LLVM checks, Rocket hello (32,896 cycles) and JTAG
-(37,226 cycles) pass. Evidence and earlier failure logs/source snapshots are in
-`output/development/native-hierarchy-function-effects-promotion-76-20261019T050937Z/report.json`.
-The full original SmallNVDLA hardware pipeline also passes on this source.
-The same design also passes LLVM lowering, ABI normalization, O1 optimization,
-machine-code generation and linkage with the original drivers. The simulator
-contains no Verilated symbols; evidence is retained in
-`output/development/native-nvdla-simulator-76-20261019T062436Z/report.json`.
-The same native76 simulator passes CPU hello in 32,896 cycles with process
-exit zero and the original SimTSI exit signal equal to one. This workload uses
-`+loadmem` preload with the original UART/DRAMSim2/TSI drivers; it does not prove
-serial TSI loading or NVDLA accelerator arithmetic. Source and original-input
-guards, the exact executable and software, and runtime logs are retained in
-`output/development/native-nvdla-cpu-boot-76-20261019T081012Z/report.json`.
-This is historical76 evidence, not validation of later backend revisions.
-The older isolated74 result remains in
-`output/development/native-nvdla-cpu-boot-74-20261019T061340Z/report.json`;
-74 has a separately reproduced lexical scope limitation.
-On76, package and relative other-instance formatter calls, and
-recursive or suspending contexts, still require further call-frame work.
-
-Native79 preserves resolved call scopes through function and task inlining.
-Package and compilation-unit formatters keep their static paths; relative child,
-upward sibling and explicit root calls resolve to the correct physical instance,
-including repeated copies of one canonical module and calls without parentheses.
-The same frames bind context DPI imports before flattening. Synchronous imported
-DPI tasks now carry their C completion status through a private return value;
-invalid nonzero completion ends the physical process through native stop controls.
-General task disable/suspension and recursive context frames remain unsupported.
-All 76 native variants and 20 additional O0/O2 executions pass: eight unchanged
-SV scope oracles produce 150 exact records, context callbacks check 18 physical
-calls per level, and task ABI tests cover signed scalars, 65-bit vectors,
-output/inout copy-back and invalid-status continuation/restart guards.
-The nested-header cache test executes two separately rebuilt plugin versions.
-Standard main frontend/LLVM checks, Rocket hello (32,896 cycles) and JTAG
-(37,226 cycles) pass with no Verilator. Native runtime sources and original
-drivers are unchanged. Sources, logs, executables, earlier failures and the
-previously tested snapshot are retained in `output/development/native-call-scopes-task-abi-promotion-79-20261019T071420Z/report.json`.
-
-Native81 supports clocked, non-suspending C/SV task callback chains and the
-C `int` completion ABI for exported tasks. Relative child and fixed-root
-context calls inside an export select the correct physical instance. Private
-printing functions retain format expressions through CFG merging while native
-print/stop controls remain active. Successful `$finish` from an exported task
-preserves simulator success and halts the importing SV process, including when
-C discards the completion status. Finish state belongs to the model's scope
-lifetime and clears on recreation. General task disable, suspension and recursive
-context frames remain unsupported.
-All 78 native variants and the prior 20 scope/task executions pass with unchanged
-source/test guards. Callback tests check two canonical instances, 28 exact print
-records, both original fatal messages and print controls, output/status handling,
-scope restoration and failed-task continuation/restart. Finish tests check normal
-preflight followed by successful finish, no SV continuation, and four model
-recreations at normal/O0/O2. Existing export tests pass 12,288 cycles per level.
-Both callback and finish programs also pass through the unchanged production
-builder, selecting the new `native/control.cpp` through the foreign-source list.
-Existing runtime/build/export sources and original peripheral drivers are
-unchanged. Main frontend/LLVM checks, Rocket hello (32,896 cycles), and JTAG
-(37,226 cycles) pass without Verilator. The original finish failure, harness-link
-failure, source snapshots, logs and exact executable archives are retained in
-`output/development/native-task-callback-promotion-81-20261019T085503Z/report.json`.
-The same executable subsequently passes the original UART transmit `A`/receive
-`Z` and quiet-diagnostic workload in 192,596 cycles, with unchanged hardware,
-implementation and simulator hashes. Its evidence is retained in
-`output/development/native-uart-runtime-refresh-81-20261019T090551Z/report.json`.
-A separate unchanged string-return `$sformatf("%m")` source matches eight stock
-Icarus records at O0/O2, including nested calls, two instances and quiet controls.
-At native81, the runtime-argument version was unsupported: native string admission rejected
-`sim.string.format_to_string` and its dynamic formatter consumer. The original
-source, stock oracle, successful executables and corrected-pipeline failure are
-retained in `output/development/native-pure-return-scope-probe-82-20261019T093119Z/report.json`.
-
-The isolated native83 candidate adds dynamic format-to-string storage and carries
-formatted values through control-flow joins as native string handles. The prior
-78 variants and 20 scope/task executions pass with unchanged guards; the original
-runtime-argument scope test matches all eight stock records at O0/O2. Conditional
-returns pass independent value, scope, side-effect, print-control and recreation
-checks at normal/O0/O2, including the original production builder. Qualification
-remains incomplete: the unchanged packed integer with an embedded NUL prints
-`ABC` natively, ` ABC` in Icarus 12 and `A BC` in Verilator 5.022. Strict stock
-file comparisons remained failed, so native83 was not promoted. Sources, the unapplied
-review patch, logs and exact executable recovery records are retained in
-`output/development/native-format-controlflow-checkpoint-83-20261019T102118Z/report.json`.
-
-Native84 lowers runtime `$sformatf` returns and dynamic string fields using
-model-owned string storage and the SDK formatter. Nested and conditional returns
-carry rendered string handles through CFG joins. Print controls retain nonpure
-argument effects and file output. The original shared SV functions remain
-unchanged. All 79 native variants and 20 scope/task executions pass with unchanged
-source/test guards. The original runtime-argument scope source matches all eight
-stock records at O0/O2, including quiet controls. Formatting tests compare 20
-stdout records and 38 file records per level at normal/O0/O2, with mixed 65-bit
-signed/unsigned values, real/binary/octal/character fields, padding/empty strings,
-physical scopes, clock/reset/enable behavior and model recreation. The original
-production builder selects additive `native/format_strings.cpp` automatically;
-existing native runtime/build/export sources and original drivers are unchanged.
-The raw Icarus corpus is retained. Its packed integer embedded-NUL field was an
-incorrect reference: independently linked unmodified Slang returns `ABC` with
-length 3, consistent with the string-value rules in IEEE1800-2017 sections6.16
-and21.3.3. The checker verifies that only this field changes and still compares
-every byte. Icarus12's ` ABC` and Verilator5.022's `A BC` outcomes remain recorded.
-Main frontend/LLVM checks, Rocket hello (32,896 cycles), JTAG (37,226) and the
-original UART transmit `A`/receive `Z`/quiet workload (192,596) pass without
-Verilator. All three workloads use the same native executable. Exact source,
-oracle, executable and recovery evidence is retained in `output/development/native-format-strings-promotion-84-20261019T105310Z/report.json`.
-
-Native85 adds the missing `compiler/FormatStrings.cpp` prerequisites to native
-RTL import and normal/debug model compilation. Editing that pass now invalidates
-all four relevant Make targets. GNU Make's actual dependency database verifies
-both the omission and the corrected graph. Original Rocket hello (32,896 cycles)
-and JTAG (37,226) pass again with exactly the native84 executable; compiler,
-runtime, drivers, ABI and model bytes are unchanged. The dependency patch and
-validation evidence are in `output/development/native-format-build-dependencies-85-20261019T113616Z/report.json`.
-
-The standalone run loop caches its diagnostic-control signal handles and the
-immutable `+verbose` option. It resolves `io_success` at its first post-reset
-check, retaining bindings that register that signal during initialization or
-before reset ends. Every root edge and scheduled event still runs. The native
-regression checks 18 combinations of root-clock use, timed evaluation, verbose
-output, late signal registration, completion, timeout, and missing success
-signals against independently generated complete waveforms in ps and fs.
-
-Native86 records time-dependency metadata before Arc state lowering adds
-coroutine wakeup checks. Processes whose yielded wakeup is always `UINT64_MAX`
-can use input and device events without polling an unused TestDriver clock.
-Explicit Arc, LLHD, and formatted time reads, finite or unknown wakeups, and
-nested coroutine calls retain conservative time handling and femtosecond
-waveforms. Exporting a model without this provenance retains the previous
-lowered-time-read scan. Native runtime and original device-driver sources do
-not change. The timing regressions compare exact DPI calls and returns,
-completion/reset timing and complete waveforms, continuous time outputs, and
-1 fs autonomous wakeups without source time reads.
-
-Native88 bounds LLVM code generation for large packed hardware values. A
-matching-SDK LLVM pass temporarily suppresses vectorization in functions with
-integers wider than 1,024 bits, then removes the temporary attributes before
-instruction selection. This avoids the 134,217,728-bit vectors observed in the
-original Vexii cache update. Basic blocks are split using a cost that includes
-operand widths, with retained block boundaries to bound LLVM's DAG scheduler.
-Optimization and machine-code generation remain at O3. Native model bindings,
-runtime, device drivers, and hardware parameters do not change.
-
-The production codegen regression compares 4,608 complete 4,096-byte cache
-images at O0/O2/O3, covering all 256 write addresses, both enables, independent
-old/base images, aliased and unaligned buffers, original attributes, explicit
-floating-point operations, constrained entry/tail calls, and failed-build
-preservation. All 82 native variants, the original scope/task preflight and
-standard frontend/LLVM checks pass. The unchanged two-lane RV64/F/D/A/C
-`VexiiRiscvConfig` passes hello (33,856 cycles), double addition (11,646), double
-division (12,126), single addition (11,656), atomics (10,706), and compressed
-instructions (11,646) with DRAMSim2 and the original SimTSI driver. The compiler
-and test evidence is in `output/development/native-bounded-codegen-promotion-88-20261019T143119Z/report.json`.
-These workloads do not establish universal configuration or VPI support.
-
-The later Ibex run passes all 37 upstream RV32 ADD cases through normal TSI
-loading and DRAMSim2 in 161,616 cycles, matching the stock simulator. Its report
-is `output/development/native-vector-bootrom-20261017/report.json`.
-The shared boot ROM now supplies a 256-byte-aligned table for direct and
-vectored interrupts. Cached generator jars track changes to the embedded ROM
-images. `tests/bootrom.py --riscv "$RISCV"` checks both images, all 32 vector
-slots, compressed-code variants and exact appended-DTB placement.
-Ibex rounds trap addresses down to 256-byte boundaries. `tests/ibex_isa.py`
-aligns the upstream test environment's existing handlers and optional-CSR
-recovery labels, retaining all arithmetic checks, privilege setup and CSR
-probes. `--check-reference` validates the workload in Spike and requires an
-injected ADD-to-SUB fault to fail test 3. The unadjusted environment and old
-boot ROM failures remain in the reports. Other configs' ROM regressions are
-recorded separately as they complete.
-
-The native workload runs have passed Rocket and BOOM hello with DRAMSim2, normal
-TSI loading on TinyRocket, dual-core Rocket, four DRAM channels, asynchronous
-uncore reset, multiclock Rocket, physical UART TX/RX, remote-bitbang JTAG debug
-register access, DMI loading, disk read/write comparisons, NIC DMA loopback,
-software branch prediction, TraceGen with Axe WMO checking, and IceNet unit tests.
-The native tethered multichip hello run completes after **9,352,876** root cycles,
-matching the Verilator reference. The I2C-config run checks hello boot with the
-stock tied-off harness; I2C transfers remain untested.
-An additional Sodor5StageConfig RV32 instruction workload passes using normal
-TSI loading, completing after 97,836 root cycles.
-
-Earlier native integration runs also pass the GCD hardware comparison, GPIO inputs/registers,
-SPI flash reads and six persisted single/quad write variants, read-only flash
-and extended addresses, Spike instruction execution, Shuttle/Cospike, checkpointing
-Cospike, and TrafficEval throughput checks. These runs explicitly set Verilator
-to an unavailable path and check that the native executable has no Verilated symbols.
-Use the JSON reports for the precise implementation hashes and current status.
-The integration runner also provides `rv32`, `shuttle_plain`,
-`shuttle_three_wide`, `gcd_tl`, `gcd_external_clock`, `init_zero`, `sim_axi`,
-`ring_noc` and `mesh_noc` selections for additional named configurations.
-They use the existing ISA, hello and GCD programs. `sim_axi` uses normal TSI
-loading into the config's pure Chisel memory, with a ten-million-cycle allowance
-for loading and execution. These selections are regression
-definitions; consult their runtime reports for completed validation.
-The frozen native69 ring and mesh NoC hello runs pass in 53,406 and 38,036 root
-cycles. The mesh report is
-`output/development/native-additional-mesh_noc-69-20261018T234706Z/report.json`.
-The complete `SimAXIRocketConfig` hello run passes in 1,038,936 root cycles using
-the original TSI driver and the config's pure Chisel AXI RAM, with no SimDRAM or
-fast memory loading. Its report is
-`output/development/native-simaxi-complete-69-20261018T234852Z/report.json`.
-The earlier one-million-cycle limit expired while the CPU was waiting in boot
-ROM; that failure and the original binary are retained with the completed run.
-
-The `default_clock`, `single_clock`, `pll_clock`, `chip_like`, `flat_chip_like`,
-`no_axi_fast` and `no_axi_serial` selections exercise the original clocking and
-chip-like configs, retaining their reset synchronizers, dividers and PLL
-settings. Native70 hello passes for `DefaultClockingRocketConfig` in 32,896 root
-cycles and `SingleClockBroadcastRocketConfig` in 119,816. Their reports are
-`output/development/native-clocking-default_clock-70-20261019T000357Z/report.json`
-and `output/development/native-clocking-single_clock-70-20261019T001019Z/report.json`.
-`ChipLikeClockingRocketConfig` also boots in 120,346 cycles with its original
-clock mux/divider and reset synchronizers; its report is
-`output/development/native-clocking-pll_clock-70-20261019T002521Z/report.json`.
-These boot runs do not establish software-controlled PLL switching.
-The `sodor1`, `sodor2`, `sodor3`, `sodor3_single`, `sodor5` and `sodor_ucode`
-selections use the complete upstream RV32 ADD program and normal TSI loading;
-their runtime validation is recorded separately.
-Native70 `Sodor1StageConfig` passes in 97,836 root cycles; its report is
-`output/development/native-sodor-sodor1-70-20261019T002244Z/report.json`.
-`Sodor2StageConfig` also passes in 97,836 cycles, recorded in
-`output/development/native-sodor-sodor2-70-20261019T003345Z/report.json`.
-`Sodor5StageConfig` passes in 97,836 cycles and `SodorUCodeConfig` in 103,116;
-their reports are
-`output/development/native-sodor-sodor5-70-20261019T010321Z/report.json` and
-`output/development/native-sodor-sodor_ucode-70-20261019T010322Z/report.json`.
-Both three-stage variants fail a TileLink inflight assertion. Independent stock
-Verilator builds reproduce the assertion with identical generated RTL and the
-same original ADD program and normal TSI loading. The failures remain unresolved;
-the comparison does not establish architectural equivalence or passing configs.
-Evidence is retained in
-`output/development/native-sodor3-reference-failures-70-20261019T013624Z/report.json`.
-
-`tests/gemmini_software.py` builds the unchanged upstream `mvin_mvout`,
-`matmul_os` and `matmul_ws` programs with a private include snapshot. Supply the
-`gemmini_params.h` generated for the hardware being tested; the shared header
-may describe a different config after another elaboration. The script requires
-a new work directory, records source/header/binary hashes, and does not change
-the shared Gemmini headers or enable the workloads' `FAST` selection:
-
-```sh
-python3 tests/gemmini_software.py --riscv "$RISCV" \
-  --parameters /path/to/hardware-generated/gemmini_params.h \
-  --work /path/to/new/gemmini-software
-make CONFIG=GemminiRocketConfig run-binary-fast \
-  BINARY=/path/to/new/gemmini-software/mvin_mvout.riscv
-```
-
-Use `--cases` to select individual programs. Compilation alone does not verify
-the hardware or its parameter match. The native integer `GemminiRocketConfig`
-DMA run passed after 73,246 root cycles with the original DRAMSim2/TSI drivers;
-its report is
-`output/development/native-gemmini-mvin-68-20261018T220537Z/report.json`.
-The native69 `GemminiShuttleConfig` also passes hello in 30,716 root cycles and
-the same original DMA program in 50,306 cycles, checking all eight 16x16 int8
-matrices. Its private elaboration-generated parameter header exactly matches
-the firmware header, and every shared Gemmini include file retains its
-pre-build hash. The DMA report is
-`output/development/native-gemmini-shuttle-dma-69-20261018T224102Z/report.json`.
-Original output-stationary and weight-stationary matrix tests remain separate
-runtime checks.
-`FPGemminiRocketConfig` on native70 also boots hello in 32,876 root cycles.
-Its private generated header describes the config's 4x4 array with float
-elements/accumulators and 4,096 scratchpad/accumulator rows; the original DMA
-and matrix programs compile against that exact header. The CPU boot report is
-`output/development/native-fp-gemmini-hello-70-20261018T235356Z/report.json`.
-This boot result does not establish accelerator computation; those workloads
-are recorded separately.
-The unchanged FP32 move-in/move-out program subsequently passes in 20,586 root
-cycles, checking eight 4x4 matrices (128 float elements) through the original
-DRAMSim2/TSI drivers and accelerator DMA. Its report is
-`output/development/native-fp-gemmini-dma-70-20261018T235604Z/report.json`.
-The complete original output-stationary matrix program also passes in 424,056
-root cycles, retaining its activation/shift combinations, preloads, accumulated
-results and golden-value comparisons with the matching FP32 parameter header.
-Its report is
-`output/development/native-fp-gemmini-matmul-os-70-20261019T003514Z/report.json`.
-The complete original weight-stationary matrix program passes in 341,826 cycles.
-The combined hello/DMA/OS/WS archive is
-`output/development/native-fp-gemmini-complete-70-20261019T011917Z/report.json`.
-A separate build using `ARC_MODEL_OPS=65536` passes the full DMA/OS/WS programs
-with the same cycle counts and byte-identical state layout; its report is
-`output/development/native-fp-gemmini-budget65536-complete-70-20261019T013624Z/report.json`.
-These results do not establish a performance improvement or full-state equivalence.
-
-`python3 tests/run_native.py --variants radiance-cache` runs an additional
-vendor RTL test when the Radiance/Vortex sources are present. It imports the
-original cache through the normal native RTL pipeline, using the Chisel boundary
-and a three-cycle memory responder, and checks all data and tags for 64 reads
-with 16 cold misses and 48 hits.
-
-`tests/integration.py` selects actual Chipyard configs and device workloads.
-Omitting `ARC_TEST_CASES` runs the full case list. `ARC_TEST_TIMEOUT` sets the wall
-timeout per command (default 1,800 seconds). Set it to `0` to allow builds and
-simulations to run without a wall deadline; the simulator's cycle limit still
-applies. The direct runner accepts `--max-cycles` to override that limit and
-repeatable `--make-setting NAME=VALUE` options for `ARC_*` build settings and
-compiler tools. Each case records those overrides and both limits:
-
-```sh
-python3 tests/integration.py --cases rocket jtag --timeout 0 \
-  --max-cycles 1000000 --make-setting ARC_OPT_LEVEL=1 \
-  --make-setting ARC_LLC_OPT_LEVEL=0
-```
-
-The `block_model` case runs the complete repository `tests/blkdev.c` program on
-`BlockDeviceModelRocketConfig`. It writes and reads four sectors, checks all 512
-data values, and requires the program's `All correct` result. The `block` case
-exercises the original SimBlockDevice C++ driver on `SimBlockDeviceRocketConfig`.
-
-```sh
-python3 tests/integration.py --runtime native --cases block_model --timeout 0
-```
-
-The `ara_rocket_4096`, `ara_rocket_8192`, `ara_shuttle_4096`, and
-`ara_shuttle_8192` cases select the full two-lane or four-lane Ara configs,
-including the 128-bit bus in both 8192-bit configs. They enable the vendor
-filelist and its frontend flags, verify the imported unit's VLEN, lane count,
-and bus width, and run 257 integer and 257 floating-point elements. Expected
-results use scalar arithmetic with compiler vectorization disabled. For example:
-
-```sh
-python3 tests/integration.py --runtime native --cases ara_rocket_8192 --timeout 0
-```
-
-These case definitions do not establish a configuration pass; each run must
-complete its hardware build and numerical checks. The installed Spike reference
-rejects VLEN above 4096 bits, so its software checks cannot validate the full
-8192-bit configuration.
-
-The `saturn`, `saturn_masked`, `saturn_transpose`, and `saturn_sgemm` cases use
-the original `REFV256D128RocketConfig`, with VLEN 256, a 128-bit vector datapath,
-and vector floating point. The architecture diagnostic checks `vlenb`, LMUL
-limits, and 111 integer64/FP64 results against precomputed host bit patterns.
-The other cases retain the upstream Saturn kernels, startup code, warmups,
-datasets, and checkers: 1,000 masked elements, a 32-by-32 transpose, and a
-71-by-71 SGEMM. Their software builds write only to each case's output directory.
-Use `--timeout 0` for long vector workloads. An independent software check is
-available through `tests/saturn_software.py --riscv "$RISCV" --work /tmp/saturn-check
---benchmark architecture --check-reference`; it uses Spike's `zvl256b` ISA
-extension and also requires an injected FP64 error to fail. The masked-load and
-SGEMM selections provide mask and FMA negative controls with the same option.
-
-Reports in `output/integration/<timestamp>/report.json` contain backend,
-software, simulator and partition hashes, required-model checks, cycle counts,
-and separate build/run logs. Native reports verify that executables contain no
-Verilated runtime symbols and record imported RTL separately from device bindings.
-Cases reject source changes during execution.
-The no-wall-timeout and explicit-build-setting options pass full native70
-Rocket hello (32,896 cycles) and JTAG register checks (37,226), with the expected
-failure for a short cycle allowance. Their report and retained verifier
-timestamp-assumption failure are in
-`output/development/native-integration-options-70-20261019T002904Z/report.json`.
-
-The refreshed seven-workload run passes Rocket, Ibex, asynchronous-reset Rocket,
-multiclock Rocket, UART, JTAG, and the real Cyclotron/DRAMSim2 fuzzer. The fuzzer
-finishes in 1,000,800 root cycles. Executables, programs, logs, source hashes,
-9,000 frontend interface vectors and references to the 41-variant, real-library,
-and full CVA6 proofs are archived in
-`output/development/native-unary-drivers-20261017T122623Z/report.json`.
-A later unchanged-source run passes all 17 selected system workloads,
-including DMI, block devices, network loopback, GPIO and SPI flash. Its original
-source hashes and logs are archived in
-`output/development/native-seventeen-systems-60-20261018T145040Z/report.json`.
-Subsequent compiler/runtime changes carry their own validation checkpoints.
-The complete frozen native68 matrix also passes all 21 selected workloads,
-including normal TSI Ibex loading, Cospike, software branch prediction and
-Shuttle. Its combined report is
-`output/development/native-twentyone-complete-68-20261019T003302Z/report.json`.
-That archive retains the original disk-full interruption and missing-source
-Ibex preparation failure alongside the successful recovery results.
-
-The UART check verifies transmitted `A`, received `Z`, and quiet-mode diagnostics.
-JTAG checks IDCODE, DTMCS, DMCONTROL and DMSTATUS through the original socket
-server. SPI tests check every command and persisted payload, and require the ROM
-image to remain unchanged. TraceGen checks its actual memory trace with Axe.
-Stock TraceGen with DRAMSim2 triggers a TileLink opcode assertion in both
-backends, so its integration case uses the original simple-memory driver.
-
-`tests/coverage.py --runtime native` distinguishes current, historical, and absent
-runtime evidence. `tests/sweep.py --runtime native` compiles the named main
-configuration catalog, including configs moved into generator plugins, and records successes and failures separately from runtime
-results. `--stage hw`, `--stage llvm`, and `--stage simulator` select compilation
-depth; `--skip-integration` leaves runtime-selected configs to the workload runner.
-The sweep inherits each selected config's integration build defaults, including
-Ara's source file list and Slang flags. Explicit `--make-setting` values take
-precedence, and the report records the effective per-config settings.
-Use `--timeout 0` for no wall-clock deadline and repeat `--make-setting NAME=VALUE`
-to record compiler settings for both preparation and config builds. This uses
-the integration runner's compiler-setting whitelist; hardware/runtime overrides
-and `MAKEFLAGS` are rejected.
-Other subprojects and composed configs are reported separately. Compilation alone
-does not establish runtime correctness. Support for every config remains
-**unverified**, including additional external IP and Chisel 7 layers.
-
-A hardware-stage sweep of the 180 catalog entries outside the integration
-selection is recorded in
-`output/config-sweep/20261017T122943158404Z-qzf7869c/report.json`. It rotates
-through generator families before the largest replicated designs; successful
-hardware compilation does not establish LLVM compilation or runtime success.
-
-The sweep exposed a shared include-expansion bug: a header emitted in one
-preprocessor branch was incorrectly removed from its sibling branches. The
-expander now removes duplicates only when the earlier include dominates the
-current branch, preserving surrounding comments and macro continuations.
-Caliptra's resource build also tracks the expander and header dependencies.
-`python3 tests/insert_includes.py --circt-verilog "$CIRCT_BIN/circt-verilog"
---work generated-src/include-tests` compares all eight branch modes with native
-SV preprocessing and checks a standalone expanded file. Frozen evidence is in
-`output/development/native-conditional-includes-20261017T130059Z/report.json`.
-The default frontend now reshapes equal-width packed elements inside fixed
-unpacked arrays, including nested dimensions. Its regression checks 16,384
-vectors at O0/O2 across packed arrays/structs, singleton dimensions, domains,
-signed types, and rebased/reversed bounds. Together with native reference-component
-lowering, it completes AES RTL import while preserving the original key-expansion
-logic. `AES256ECBRocketConfig` also compiles through LLVM using the standard Make
-pipeline. The original generated cipher driver and Caliptra RTL pass 28 AES-256
-ECB encrypt/decrypt comparisons with OpenSSL at each of O0/O2, including reset,
-key/mode changes and output backpressure. Reproduce this with
-`make CONFIG=AES256ECBRocketConfig caliptra-aes-test CIRCT_BIN=/path/to/circt/bin`.
-This harness uses the actual generated driver and its reachable helpers; the
-full CPU RoCC/DMA workload remains unverified.
-
-Packed structs and unions support constant/dynamic bit and range writes through
-native reference descriptors. Indices retain their full width, and nested
-projections clip writes to the available parent range. Union values use a common
-overlapping bit representation across module signatures, calls, CFG arguments,
-arrays and structs. The native suite includes `packed-struct`, `packed-union`
-and `packed-cfg` fixtures with blocking/nonblocking ordering and O0/O2 execution.
-`tests/union_bits.py` separately checks module/extern signatures, 65-bit values,
-nonzero union-field offsets and zero-width fields. Packed `case`, `casex` and
-`casez` comparisons are included in `make frontend-test`.
-
-Native import uses `compiler/NativeMem2Reg.cpp`, based on the pinned CIRCT LLHD
-memory-promotion pass. Conditional drives have separate mutable definitions:
-equal data/enable operands in different branches can still require different
-incoming values and muxes. The SDK's interning of these definitions can produce
-invalid SSA or reuse a mux from a sibling block. `tests/mem2reg.py` reproduces the
-stock SDK dominance failure and checks 65,536 vectors at each of O0/O2 across
-scalar and packed aggregate values with different incoming values and enables.
-
-Foreign RTL source discovery excludes `TestDriver`, matching the files actually
-sent to the native importer. This prevents a testbench reference to `TestHarness`
-from creating a circular native boundary containing its analog ports.
-`tests/rtl_source_scope.py` checks this while retaining a real RTL-to-Chisel
-helper boundary. Full-system GPIO and SPI-flash workloads pass in
-`output/integration/20261017T143108207651Z-ekbrpmhn/report.json`.
-
-Frozen evidence for the packed union/reference and conditional-drive changes is
-in `output/development/native-early-conditional-defs-45-suite-20261018T031103Z/report.json`.
-All 45 native fixture variants and all five frontend numerical suites pass.
-The same backend source snapshot passes the original AES driver at O0/O2 and a
-full CPU loopback-network workload using the original SimNetwork/DRAMSim2
-drivers. This does not establish support for the entire configuration catalog.
-At that checkpoint, Ara's exported SRAM DPI functions were unsupported.
-Subsequent native export work covers those functions; complete Ara vector
-workloads remain under validation.
-
-Automatic references inside combinational regions use private LLVM stack
-storage. Each declaration initializes a fresh allocation; CFG edges carry a
-pointer and a bounded bit range. Components can merge roots of different sizes
-and retain references to earlier loop allocations. This storage does not escape
-the invocation. Delayed writes, escaping references and components mixed with
-global storage stay unchanged for a later lowering or an explicit diagnostic.
-`tests/run_native.py --variants local-memory` checks 16,384 independent vectors,
-including 1/65/91-bit storage, 129-bit projected references, wide invalid indices,
-partial writes, loop-carried ranges and live references to prior allocations.
-It also checks exact DPI callback values, order and counts inside the loop at
-O0/O2, through the normal native runtime.
-
-The optional `tests/ara_functions.py` regression imports the original Ara
-package functions and checks their shuffle/deshuffle tables at O0/O2 for all five
-lane counts and all element widths. It takes `--circt-bin`, `--ara-root`,
-`--filelist` (the complete SV dependency manifest), and `--work`. It does not
-require modifications to Ara's source files or establish full-system support.
-
-The stack-storage and original-package results are frozen in
-`output/development/native-local-memory-46-suite-20261018T034032Z/report.json`.
-All 46 native fixtures pass, along with 81,920 original Ara function checks and
-the original AES driver at O0/O2. The same report preserves a failing static
-storage case: after writing 17, disabling the writer should retain 17, but the
-pinned SV importer restores the declaration initializer, 291. This report
-records the frontend before the static-storage fix described below.
-
-The default frontend now hoists static procedural locals into storage owned by
-their module instance. Function calls capture that storage, including through
-wrapper functions; repeated calls share a static local and separate instances
-retain independent state. Automatic locals retain their invocation lifetime.
-`tests/run_native.py --variants static-storage` checks 4,096 cycles at O0/O2,
-including explicit statics in automatic functions, implicit statics in default
-functions, conditional block statics and fresh automatic block locals. The
-previous frontend fails the repeated-call case on cycle 1.
-Static value formals also retain storage: inputs copy in at call entry, outputs
-copy out at every return, and output-only formals keep their preceding value
-until assigned. Default arguments are evaluated by callers. Pure declaration
-initializers snapshot startup state instead of following later argument writes;
-compilation-unit/package dependencies use the same startup rule and shared
-global identity. `tests/run_native.py --variants static-formals` checks defaults,
-input/output/inout retention, reset hold, two instances, compilation-unit task
-storage and model recreation at O0/O2. `tests/signal_initializers.py` checks
-nonzero chained startup values and diagnoses cyclic or effectful dependencies,
-including unused initializer effects.
-The main implementation passes all 70 native regression variants and the
-original Rocket hello/JTAG checks in
-`output/development/native-static-formals-promotion-71-20261019T020321Z/report.json`.
-That checkpoint retains the normal pinned-source frontend build, exact source
-and test hashes, executables, earlier failures and the separate Radiance
-RTL-import evidence.
-Package globals with constant initializers now use native signal memories keyed
-by their original qualified name. Imported module variants share each global's
-contents and version, while each simulator model owns its storage. Blocking
-updates become visible immediately and nonblocking writes commit together.
-`tests/run_native.py --variants global-storage` checks 12,288 cycles per
-executable, including separately imported parameter variants, package-function
-statics, passive readers, wide partial writes, nonblocking array writes, invalid
-indices and model recreation. It also checks conflicting widths/initial values
-and guards against dropping initializer side effects or cloning unsupported
-global references into independent registers.
-The `global-startup` variant additionally reads and writes the shared globals
-from an SV `initial` block, including a shared function call and both blocking
-and nonblocking writes before the first clock edge.
-Initializers requiring runtime calls or effects remain unsupported and are
-diagnosed; general runtime initialization ordering remains open. Subsequent
-export support is described below.
-
-The static-storage results are frozen in
-`output/development/native-static-storage-47-suite-20261018T041421Z/report.json`.
-All 47 native fixtures, five frontend compatibility suites, 81,920 original Ara
-helper comparisons and the original AES driver at O0/O2 pass. The report also
-preserves the previous frontend's failing lifetime test and the failures for
-mutable package globals and DPI-valued initializers before global storage was
-added. At that checkpoint, full Ara import had no remaining local signals;
-four drives in its three exported SRAM APIs still required native bindings.
-
-The shared-global results are frozen in
-`output/development/native-global-storage-49-suite-20261018T043929Z/report.json`.
-All 49 native fixtures, five frontend suites, original Ara helper checks, the
-original AES driver and seven full-system integration cases pass on this
-implementation. At that checkpoint, full Ara still stopped at its three
-exported SRAM APIs. General nonconstant declaration initialization remains incomplete. Closed DPI
-declaration graphs, including verified native context scopes and writable
-native storage, are supported as described above. Closed package/global
-initializers with context-free DPI functions are also supported there.
-
-The native importer now compiles integral, string, real, shortreal, and scalar
-realtime DPI exported functions
-and registers their C entry points against physical instance scopes. The
-original SV bodies read and write the same signal-memory storage as RTL;
-exports are not implemented as peripheral-specific replacements. `rtl.json`
-records each compiled entry, its original ABI and captured storage contract.
-C callers select a scope with `svSetScope(svGetScopeFromName(path))`. Export
-scope paths use the same slash-separated physical hierarchy as native binding
-names, including generated boundary wrappers. `svGetNameFromScope` returns
-that path; original dotted SV hierarchy aliases are not reconstructed.
-Stateless exports retain per-instance specialization, and storage used only by
-C exports remains live. Native C callbacks can invoke these entries during
-model settling without recursively evaluating the whole design. Outside an
-active evaluation, the runtime settles initial work before the call and
-publishes its blocking or captured-memory NBA writes before returning to C.
-Scalar atoms, bit/logic scalars, packed vectors, strings, chandles and output/inout formals use
-the original DPI C ABI; unknown input bits become zero in this two-state model.
-`tests/run_native.py --variants exports` checks these paths at O0/O2 across
-13/65-bit memories, 512-bit arguments, two specialized instances and model
-recreation. Temporary output/inout references reject NBA writes whose update
-would outlive the call frame.
-`tests/run_native.py --variants real-exports` checks native `real` and
-`shortreal` C ABI values, returns, output/inout arguments, captured module
-storage, and automatic function locals. It compares exact IEEE bit patterns,
-including signed zero, subnormals, infinities and NaN payloads, and verifies
-arithmetic/rounding, separate instance scopes, model recreation and state
-coherence between RTL and C++ at O0/O2/O3.
-
-Scalar `realtime` imports and exports use the standard `double` C ABI and IEEE
-f64 storage. `$realtime` converts the model's physical clock into the declaration's
-lexical time unit. Exported bodies and their SV helper functions read that same
-native clock; integral time and scheduler clocks retain their existing
-representation. `tests/run_native.py --variants realtime-exports` runs 41,059
-checks at each of normal/O0/O2/O3 settings. These cover exact IEEE identities,
-context callbacks, defaults and typed constants, output/inout arguments, null
-rejection, captured state and RTL coherence, model recreation, and independent
-1ns/100ps declaration time units. This coverage applies to scalar formals.
-
-Native108 passes the 82 default native variants plus the optional `scan`,
-`radiance-cache`, and `rr-arbiter` resource regressions (85 total), and the
-standard frontend/LLVM gates. Fresh default-O3/llc-O3 Rocket, JTAG and UART
-workloads pass with the original drivers and unchanged whole program ELFs;
-all 22,965 complete CPU trace records match Native105. Source snapshots, the
-initial failures, four realtime executables, and full qualification logs are in
-`output/development/native-realtime-promotion-108-20261020T120107Z/report.json`. These results do not establish every
-Chipyard configuration or general VPI support.
-
-Fixed unpacked-array export formals marshal integral atoms, bit/logic scalars,
-packed bit/logic vectors and aggregates, strings, and chandles through their
-original C pointer ABI. C elements follow declaration order across nested,
-ascending, descending, and rebased dimensions. Each packed element uses its own
-canonical 32-bit words; SV storage remains compact across non-byte widths.
-Outputs start at zero and inouts preserve unwritten elements. Unknown input
-bits become zero, output unknown masks and C padding are cleared, and returned
-string storage belongs to the model. Null array arguments are rejected.
-A stable compiler layout ID selects the physical instance's bridge, including
-parameterizations with the same total SV width but different C element padding.
-This selection does not depend on distinct machine-code function addresses.
-Exported scalar atoms use the public DPI C types `char`, `short`, `int`, and
-`long long`, including their unsigned forms. Fixed string/handle input arrays
-retain the C header's pointer qualifications. The array regression compiles both
-the generated bridge and its client with a portable public DPI header, and also
-checks signed/unsigned scalar edge values and 64-bit array output/inout data.
-
-`tests/run_native.py --variants array-exports` checks two specialized instances,
-1D/2D arrays, 13/65/129/193-bit values, mixed bounds, partial outputs and inouts,
-scalar unknown encoding, string/handle captures, high pointer bits, model
-recreation, and state coherence between RTL and C++. Equal 195-bit layouts
-require nine versus ten C words and retain surrounding canaries. Normal/O0/O2/O3
-executions each check 1,902,084 values; a one-bit expected-value fault is rejected.
-Dynamic and open-array export formals still require additional lowering.
-
-Non-suspending exported tasks use the same native call frames, including void
-and zero-argument tasks, output formals and captured instance storage. Tasks
-that wait or retain uninlined coroutine calls are rejected; they need scheduler
-call frames. String inputs, outputs, inouts and returns use the standard C
-string ABI. Their contents are copied into an immutable, per-model string pool;
-returned pointers stay valid until the model is destroyed. Native string
-operations include length, byte indexing, comparisons, concatenation, ASCII
-case conversion and packed integer conversions. Original string ABI metadata
-remains dynamic; the separate native storage representation uses handles.
-
-`$readmemh` and `$readmemb` load fixed unpacked arrays of packed words,
-including ascending/descending declarations, nonzero/negative bounds, optional
-start/finish ranges, address directives, comments and underscore separators.
-Holes preserve previous values; malformed input or invalid enum words stop the
-load after retaining earlier valid writes. X/Z file bits become zero in this
-two-state runtime. `readmem` checks the compiled original SV tasks at O0/O2,
-including the `simutil_memload` signature, 13/65-bit words and enum validation.
-Multidimensional loads visit numeric indices in ascending order within each
-row, with the rightmost unpacked dimension varying fastest. Address directives
-select the highest dimension and restart at its first subword; reverse ranges
-reverse that dimension while preserving the order inside each row. The
-compiler records the declared direction of every unpacked dimension so the
-runtime can address the packed native storage correctly. Partial files and
-row jumps retain all words they do not write. These rules follow
-[the SystemVerilog array file-format specification, sections 23.17–23.18](https://ece.uah.edu/~gaede/cpe526/SystemVerilog_3.1a.pdf#page=354).
-`readmem-multi` checks compiled SV exports with mixed-direction 2D/3D arrays,
-negative bounds, 9/13/65/129-bit words, slices, indexed subarrays, binary/hex
-files and partial failures at normal/O0/O2 settings.
-Queue loads and runtime string formatting still need lowering. At that checkpoint the original Ara
-import retained all three SRAM exports, and hardware preparation stopped at
-temporal LTL assertions. Its complete CPU workload remains unverified. Runtime
-nonconstant declaration initialization and general VPI hierarchy/callback
-support also remain open. Context function imports are supported as described
-in the DPI section; recursive contexts still require native call frames.
-The earlier frozen reports above
-cover their recorded implementations; the export implementation has its own
-regression results.
-
-`tests/ara_sram.py --circt-bin "$CIRCT_BIN"` also compiles the unmodified Ara
-`tc_sram.sv` with all three original exports enabled. Its comparisons cover
-13/65-bit memories, file loading, C setters/getters, invalid indices, masked
-RTL writes, pre-write read data, registered read latency and model recreation.
-It uses the production native build script at O0/O2 and checks for absent
-Verilated symbols.
-
-The partition preparation now streams the normalized and flattened assembly
-instead of retaining whole bodies, line lists and unused global SSA sets.
-`FileLines` supplies repeatable passes and temporary output files are removed
-when a pass completes or fails. Outer module attributes and opaque strings
-survive declaration insertion. Byte-for-byte comparisons cover the 50 original
-native fixtures and the full flow for procedural scopes, asynchronous registers
-and exported functions. The real 64-core BOOM input (2,832,011,290 bytes) also
-produced identical partition IR, bindings JSON and adapter SV at a measured
-47,124 KiB maximum Python RSS. That measurement covers Python partitioning;
-CIRCT compilation and complete CPU runtime are separate requirements.
-Compilation-unit static locals are now declared as shared globals before their
-function bodies lower. `unit-static` adds O0/O2 checks for retained values and
-independent model recreation. Static initializers that depend on task arguments
-still need proper formal storage and startup initialization; Radiance trace
-tasks currently expose that remaining gap.
-
-The task/context changes are frozen in
-`output/development/native-task-context-51-20261018T070358Z/report.json`.
-That checkpoint passed all 51 native fixtures, five frontend suites, 81,920
-original Ara function checks and 28 AES-driver comparisons at each of O0/O2.
-It includes scope restoration after callbacks change the selected scope or
-throw, and compiler checks that preserve distinct DPI import qualifiers.
-The report identifies the earlier five-system snapshot separately; these
-fixture results do not establish universal configuration or runtime support.
-
-The subsequent string/readmem and singleton-CFG implementation is frozen in
-`output/development/native-strings-sram-cfg-52-20261018T082814Z/report.json`.
-It records 52 native fixtures, the frontend/Ara/AES helper suites, 131,072
-singleton-CFG comparisons and 33,792 comparisons against the unmodified Ara
-SRAM at O0/O2. Its six loader/export executables and the original-SRAM
-executables contain no Verilated symbols. The current full-system matrix is
-tracked separately in the report; full Ara and universal config support remain
-incomplete. The completed five-system run is preserved in
-`output/development/native-five-systems-52-20261018T084458Z/report.json`:
-Rocket (32,896 cycles), async-reset Rocket (31,386), multiclock Rocket (31,386),
-UART (192,596), and JTAG (37,226), including actual debug-register reads.
-That archive records the exact implementation and three executable hashes.
-
-The temporal checkpoint is frozen in
-`output/development/native-temporal-53-20261018T085452Z/report.json`. It passed all 53 native
-fixtures and six frontend suites. Its SV regression checks for finite
-antecedents, exact/ranged delays, repetitions, sequence conjunction/disjunction
-and intersection, nested implications, `$past`, independent positive/negative
-edges, asynchronous cancellation and stop gating. It compares exact assertion
-callback counts against a separate C++ trace checker at O0/O2. Thirteen guard
-cases ensure unsupported cones cannot become partial monitors. A separate
-20,480-result source-level truth table checks next-cycle SVA operators; the
-previous frontend produces 2,816 differing results. Ara now passes hardware
-partitioning with 476 pointwise assertions and 138 finite temporal monitors;
-complete CPU execution is still pending.
-
 ## Hybrid reference
 
 `make ARC_RUNTIME=hybrid` or `make hybrid` selects the prior mixed simulator.
 It runs the generated hardware with Arcilator and delegates foreign SV/event
 scheduling to Verilator. Its executables retain the `simulator-...` names and
 artifacts use `arcilator` / `arcilator-debug`. This optional reference requires a
-Verilator timing-capable C++ compiler. `make hybrid-test` runs its nine compiled boundary
-fixtures against independent SystemVerilog references; these include analog
-attach, parameters, probes, 5,000 returned bits, delayed-event feedback, and
-TraceROM. `tests/integration.py --runtime hybrid` selects hybrid workload tests.
-The full prior 23-case hybrid matrix passed, with I2C and software prediction also
+Verilator timing-capable C++ compiler. The full prior 23-case hybrid matrix passed, with I2C and software prediction also
 passing separately. These results are kept separate from native evidence.
 
 ## Known shared build failures
@@ -3768,9 +2680,7 @@ lookup keeps every original IO cell, port, connection and configuration value.
 The Scala source participates in coverage fingerprints. Native124 passes its
 full standard hardware build and default-O3 hello, UART transmit/receive and
 JTAG register/memory checks, matching ordinary Rocket cycle counts, complete ELFs
-and all 22,965 CPU records. Run the first-class cases with
-`make integration-test ARC_TEST_CASES="custom_io custom_io_uart custom_io_jtag"`.
-All original 60 case tuples and runtime selection decisions are preserved.
+and all 22,965 CPU records. All original 60 case tuples and runtime selection decisions are preserved.
 Compiler/runtime C++ and the 89 native fixture sources remain identical to
 qualified123; that unchanged suite is inherited, not reported as rerun here.
 Evidence is in `output/development/native-custom-io-promotion-124-20261020T171405Z/report.json`.
@@ -3808,11 +2718,9 @@ Coverage requires an exact implementation fingerprint for both runtime and
 compilation evidence. A private candidate that records additional changed
 sources is historical, even if every main-tree file matches. Missing or changed
 fingerprints also remain historical; incomplete successful-run records are
-rejected. Run `python3 tests/coverage_integrity.py` to exercise these rules with
-isolated synthetic metadata. Those fixtures never count as hardware or runtime
+rejected. Those fixtures never count as hardware or runtime
 qualification. This analyzer-only correction leaves the qualified native132
 compiler and runtime sources unchanged.
-
 
 Native135 buffers private LLVM values according to their allocation size as well
 as parameter and tuple-field counts. It handles scalar, array and aggregate
@@ -3840,6 +2748,4 @@ an end-to-end speedup or establish every configuration or general VPI support.
 
 Native callback scopes use a private inline guard for the same thread-local
 exchange and restoration as `DpiContext`; its public constructor/destructor ABI
-remains available. `tests/idle_clock.py` also runs `tests/scope_guard.py`, which
-checks nested and throwing callbacks, public ABI calls, registry cleanup, thread
-isolation, and late-loaded shared libraries. The scope test needs only C++.
+remains available. The scope test needs only C++.
