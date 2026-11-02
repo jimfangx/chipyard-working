@@ -33,6 +33,11 @@ class LargeBoomV3Config extends Config(
   new chipyard.config.WithSystemBusWidth(128) ++
   new chipyard.config.AbstractConfig)
 
+class QuadLargeBoomV3Config extends Config(
+  new boom.v3.common.WithNLargeBooms(4) ++                          // large boom config
+  new chipyard.config.WithSystemBusWidth(128) ++
+  new chipyard.config.AbstractConfig)
+
 class MegaBoomV3Config extends Config(
   new boom.v3.common.WithNMegaBooms(1) ++                           // mega boom config
   new chipyard.config.WithSystemBusWidth(128) ++

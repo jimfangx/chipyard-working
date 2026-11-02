@@ -30,6 +30,7 @@ usage() {
     echo "   9. FireMarshal pre-compile default buildroot Linux sources"
     echo "  10. Install CIRCT"
     echo "  11. Runs repository clean-up"
+    echo "  12. Build and qualify the native Arcilator toolchain (prebuilt Linux x86-64 CIRCT)"
     echo ""
     echo "**See below for options to skip parts of the setup. Skipping parts of the setup is not guaranteed to be tested/working.**"
     echo ""
@@ -53,6 +54,8 @@ usage() {
     echo "  --skip-marshal          : Skip firemarshal initialization (steps 8/9)"
     echo "  --skip-circt            : Skip CIRCT install (step 10)"
     echo "  --skip-clean            : Skip repository clean-up (step 11)"
+    echo "  --skip-arcilator        : Skip optimized Arcilator setup (step 12)"
+    echo "  ARC_BUILD_JOBS          : Arcilator compiler construction workers (default: nproc)"
 
     exit "$1"
 }
@@ -112,6 +115,8 @@ do
             SKIP_LIST+=(10) ;;
         --skip-clean)
             SKIP_LIST+=(11) ;;
+        --skip-arcilator)
+            SKIP_LIST+=(12) ;;
         * )
             error "invalid option $1"
             usage 1 ;;
@@ -389,7 +394,7 @@ if run_step "10"; then
 	echo "Building CIRCT from source, and installing to $PREFIX"
 	$CYDIR/scripts/build-circt-from-source.sh --prefix $PREFIX
     else
-	echo "Downloading CIRCT from nightly build"
+	echo "Downloading the CIRCT release pinned in conda-reqs/circt.json"
 
 	git submodule update --init $CYDIR/tools/install-circt &&
 	    $CYDIR/tools/install-circt/bin/download-release-or-nightly-circt.sh \
@@ -400,6 +405,37 @@ if run_step "10"; then
 		-g $GITHUB_TOKEN
     fi
     exit_if_last_command_failed
+
+    # The prebuilt Linux SDK loads the distro SONAME libz3.so.4. Conda's
+    # compatible Z3 4.x package uses a minor-version SONAME (e.g. .so.4.16).
+    # CIRCT already searches PREFIX/lib; point it at the environment's library
+    # so installation does not depend on a host-system Z3 package.
+    if [ -n "${CONDA_PREFIX:-}" ] && [ -f "$CONDA_PREFIX/lib/libz3.so" ]; then
+        mkdir -p "$PREFIX/lib"
+        exit_if_last_command_failed
+        if [ "$(realpath "$PREFIX/lib")" != "$(realpath "$CONDA_PREFIX/lib")" ]; then
+            # Newly linked frontend tools request Conda's own SONAME too.
+            for CIRCT_Z3_LIBRARY in "$CONDA_PREFIX"/lib/libz3.so*; do
+                ln -sfn "$(realpath --no-symlinks --relative-to="$PREFIX/lib" "$CIRCT_Z3_LIBRARY")" \
+                    "$PREFIX/lib/${CIRCT_Z3_LIBRARY##*/}"
+                exit_if_last_command_failed
+            done
+        fi
+        if [ ! -e "$PREFIX/lib/libz3.so.4" ]; then
+            ln -sfn "$(realpath --no-symlinks --relative-to="$PREFIX/lib" "$CONDA_PREFIX/lib/libz3.so")" \
+                "$PREFIX/lib/libz3.so.4"
+            exit_if_last_command_failed
+        fi
+        # SDK CMake exports also embed the release builder's distro Z3 path.
+        # Native frontend plugins must link the same environment library.
+        if [ -f "$PREFIX/lib/cmake/llvm/LLVMExports.cmake" ]; then
+            sed -i 's|/usr/lib/[^";]*libz3\.so|${_IMPORT_PREFIX}/lib/libz3.so.4|g' \
+                "$PREFIX/lib/cmake/llvm/LLVMExports.cmake"
+            exit_if_last_command_failed
+        fi
+    fi
+    "$PREFIX/bin/circt-opt" --version > /dev/null
+    exit_if_last_command_failed
 fi
 
 
@@ -408,6 +444,48 @@ if run_step "11"; then
     begin_step "11" "Cleaning up repository"
     $CYDIR/scripts/repo-clean.sh
     exit_if_last_command_failed
+fi
+
+if run_step "12"; then
+    begin_step "12" "Building and qualifying the native Arcilator toolchain"
+    if [ "$(uname -m)" = x86_64 ] && [ "$BUILD_CIRCT" = false ]; then
+        if run_step "1"; then
+            ARC_SETUP_SDK=$CONDA_PREFIX/$TOOLCHAIN_TYPE
+        else
+            ARC_SETUP_SDK=${RISCV:?Source env.sh before skipping Conda setup}
+        fi
+        ARC_SETUP_PREFIX=${CONDA_PREFIX:?Activate the Chipyard Conda environment before Arcilator setup}
+        ARC_SETUP_ENV=$ARC_SETUP_PREFIX/arcilator-env.sh
+        (
+            set -e
+            export RISCV="$ARC_SETUP_SDK"
+            export PATH="$RISCV/bin:$PATH"
+            # Step 3 normally installs Espresso. Cover existing/lean setups
+            # that skipped that step before generating the reference models.
+            if [ ! -x "$RISCV/bin/espresso" ]; then
+                git -C "$CYDIR" submodule update --init generators/constellation
+                (
+                    cd "$CYDIR/generators/constellation"
+                    MAKEFLAGS="-j${ARC_BUILD_JOBS:-$(nproc)}" scripts/install-espresso.sh "$RISCV"
+                )
+                test -x "$RISCV/bin/espresso"
+            fi
+            python3 "$CYDIR/sims/arcilator/compiler/toolchain.py" setup \
+                --sdk "$ARC_SETUP_SDK" --jobs "${ARC_BUILD_JOBS:-$(nproc)}" \
+                --work "$ARC_SETUP_PREFIX/arcilator-toolchain" \
+                --activation "$ARC_SETUP_ENV"
+        )
+        exit_if_last_command_failed
+        printf -v ARC_SETUP_SOURCE '. %q' "$ARC_SETUP_ENV"
+        replace_content "$CYDIR/env.sh" build-setup-arcilator "$ARC_SETUP_SOURCE"
+        exit_if_last_command_failed
+    else
+        echo "Optimized Arcilator construction is qualified for the prebuilt Linux x86-64 CIRCT SDK."
+        echo "Using the installed native CIRCT tools for this architecture/source build instead."
+        replace_content "$CYDIR/env.sh" build-setup-arcilator \
+            "# Optimized Arcilator activation is disabled for this SDK."
+        exit_if_last_command_failed
+    fi
 fi
 
 echo "Setup complete!"
