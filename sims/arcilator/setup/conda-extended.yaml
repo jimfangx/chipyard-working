@@ -1,0 +1,3 @@
+dependencies:
+    - clang-format=18.1.8
+    - clang-tools=18.1.8

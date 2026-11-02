@@ -72,8 +72,8 @@ dependencies:
     - pyelftools
 
     # clang-format for driver coding style enforcement.
-    - clang-format=18.1.8
-    - clang-tools=18.1.8
+    - clang-format
+    - clang-tools
 
     # hammer packages
     - sty

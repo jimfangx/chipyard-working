@@ -45,7 +45,9 @@ for TOOLCHAIN_TYPE in riscv-tools; do
       --conda "$CONDA_EXE" \
       --pypi_to_conda_lookup_file "$REQS_DIR/pypi-mapping.json" \
       -f "$REQS_DIR/chipyard-base.yaml" \
+      -f "$CY_DIR/sims/arcilator/setup/conda.yaml" \
       -f "$REQS_DIR/chipyard-extended.yaml" \
+      -f "$CY_DIR/sims/arcilator/setup/conda-extended.yaml" \
       -f "$REQS_DIR/docs.yaml" \
       -f "$REQS_DIR/$TOOLCHAIN_TYPE.yaml" \
       -p "$PLATFORM" \
@@ -60,6 +62,7 @@ for TOOLCHAIN_TYPE in riscv-tools; do
       --conda "$CONDA_EXE" \
       --pypi_to_conda_lookup_file "$REQS_DIR/pypi-mapping.json" \
       -f "$REQS_DIR/chipyard-base.yaml" \
+      -f "$CY_DIR/sims/arcilator/setup/conda.yaml" \
       -f "$REQS_DIR/docs.yaml" \
       -f "$REQS_DIR/$TOOLCHAIN_TYPE.yaml" \
       -p "$PLATFORM" \

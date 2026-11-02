@@ -15,6 +15,10 @@ from filelists import source_paths
 from partition import IDENT, opcode, split, unquote, svparam, packed_width, svname, width
 from native_exports import contracts
 from rtl_libraries import discover as discover_libraries
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
 from compiler.partition import plugin
 from compiler.verilog.build import build as build_frontend
 
@@ -154,7 +158,7 @@ def prepare_native_signals(raw, core, circt_opt, library):
     memory_library = plugin(
         circt_opt, os.environ.get('CXX', 'c++'),
         Path(__file__).parent / 'generated-src/compiler',
-        Path(__file__).parent / 'compiler/NativeMem2Reg.cpp')
+        Path(__file__).parent.parent / 'compiler/NativeMem2Reg.cpp')
     subprocess.run([
         str(circt_opt),
         str(raw), '--load-pass-plugin=' + str(library),
@@ -170,12 +174,12 @@ def prepare_rtl(raw, core, circt_opt, library, state_library=None):
     memory_library = plugin(
         circt_opt, os.environ.get('CXX', 'c++'),
         Path(__file__).parent / 'generated-src/compiler',
-        Path(__file__).parent / 'compiler/NativeMem2Reg.cpp')
+        Path(__file__).parent.parent / 'compiler/NativeMem2Reg.cpp')
     if state_library is None:
         state_library = plugin(
             circt_opt, os.environ.get('CXX', 'c++'),
             Path(__file__).parent / 'generated-src/compiler',
-            Path(__file__).parent / 'compiler/SignalState.cpp')
+            Path(__file__).parent.parent / 'compiler/SignalState.cpp')
     # SCCP cannot safely propagate values across LLHD suspension edges and
     # opaque calls: it can replace a yielded DPI result with its initial value.
     # The matching SDK pipeline uses local canonicalization on these regions.
@@ -351,17 +355,17 @@ def compile_rtl(args):
               flush=True)
         subprocess.run(command + ['-o', str(early)], check=True)
         library = plugin(args.circt_opt, args.cxx, cache,
-                         Path(__file__).parent / 'compiler/RTL.cpp')
+                         Path(__file__).parent.parent / 'compiler/RTL.cpp')
         signal_library = plugin(
             args.circt_opt, args.cxx, cache,
-            Path(__file__).parent / 'compiler/SignalWrites.cpp')
+            Path(__file__).parent.parent / 'compiler/SignalWrites.cpp')
         union_library = plugin(
             args.circt_opt, args.cxx, cache,
-            Path(__file__).parent / 'compiler/UnionBits.cpp')
+            Path(__file__).parent.parent / 'compiler/UnionBits.cpp')
         contexts_library = plugin(args.circt_opt, args.cxx, cache,
-                                  Path(__file__).parent / 'compiler/NativeContexts.cpp')
+                                  Path(__file__).parent.parent / 'compiler/NativeContexts.cpp')
         hierarchy_library = plugin(args.circt_opt, args.cxx, cache,
-                                   Path(__file__).parent / 'compiler/HierarchyFormats.cpp')
+                                   Path(__file__).parent.parent / 'compiler/HierarchyFormats.cpp')
         # Preserve original reference ranges before the SDK drive hoister can
         # turn separate lane/bit writers into overlapping whole-value drivers.
         subprocess.run([
@@ -378,16 +382,16 @@ def compile_rtl(args):
                        check=True)
         exports_library = plugin(
             args.circt_opt, args.cxx, cache,
-            Path(__file__).parent / 'compiler/SignalMemory.cpp')
+            Path(__file__).parent.parent / 'compiler/SignalMemory.cpp')
         strings_library = plugin(
             args.circt_opt, args.cxx, cache,
-            Path(__file__).parent / 'compiler/NativeStrings.cpp')
+            Path(__file__).parent.parent / 'compiler/NativeStrings.cpp')
         formats_library = plugin(
             args.circt_opt, args.cxx, cache,
-            Path(__file__).parent / 'compiler/FormatStrings.cpp')
+            Path(__file__).parent.parent / 'compiler/FormatStrings.cpp')
         handles_library = plugin(
             args.circt_opt, args.cxx, cache,
-            Path(__file__).parent / 'compiler/NativeHandles.cpp')
+            Path(__file__).parent.parent / 'compiler/NativeHandles.cpp')
         strings = args.work / (wrapper + '-strings.mlir')
         subprocess.run([
             str(args.circt_opt),
@@ -412,7 +416,7 @@ def compile_rtl(args):
         sliced = exported
         state_library = plugin(
             args.circt_opt, args.cxx, cache,
-            Path(__file__).parent / 'compiler/SignalState.cpp')
+            Path(__file__).parent.parent / 'compiler/SignalState.cpp')
         initialized = args.work / (wrapper + '-initializers.mlir')
         subprocess.run([
             str(args.circt_opt), str(sliced),
@@ -423,7 +427,7 @@ def compile_rtl(args):
         sliced = initialized
         memory_promotion_library = plugin(
             args.circt_opt, args.cxx, cache,
-            Path(__file__).parent / 'compiler/NativeMem2Reg.cpp')
+            Path(__file__).parent.parent / 'compiler/NativeMem2Reg.cpp')
         # Preserve feedback initializers before the matching SDK pipeline
         # promotes unconditional signals. Registers/memories keep SDK inference.
         subprocess.run([
@@ -442,7 +446,7 @@ def compile_rtl(args):
         state.replace(core)
         local_library = plugin(
             args.circt_opt, args.cxx, cache,
-            Path(__file__).parent / 'compiler/LocalMemory.cpp')
+            Path(__file__).parent.parent / 'compiler/LocalMemory.cpp')
         local = args.work / (wrapper + '-local.mlir')
         subprocess.run([
             str(args.circt_opt),
@@ -455,7 +459,7 @@ def compile_rtl(args):
         local.replace(core)
         memory_library = plugin(
             args.circt_opt, args.cxx, cache,
-            Path(__file__).parent / 'compiler/SignalMemory.cpp')
+            Path(__file__).parent.parent / 'compiler/SignalMemory.cpp')
         memory = args.work / (wrapper + '-memory.mlir')
         subprocess.run([
             str(args.circt_opt),
@@ -476,7 +480,7 @@ def compile_rtl(args):
                 opcode(line).startswith('sim.func.dpi')
                 for line in text.splitlines()):
             abi_library = plugin(args.circt_opt, args.cxx, cache,
-                                 Path(__file__).parent / 'compiler/Model.cpp')
+                                 Path(__file__).parent.parent / 'compiler/Model.cpp')
             checked = core.with_name(core.stem + '-dpi-checked.mlir')
             subprocess.run([
                 str(args.circt_opt),

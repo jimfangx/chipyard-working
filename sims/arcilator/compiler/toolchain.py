@@ -16,7 +16,7 @@ import sys
 import time
 
 HERE = Path(__file__).resolve().parent
-SIM = HERE.parent
+SIM = HERE.parent / 'simulation'
 DEFAULT_WORK = SIM / 'generated-src/toolchain'
 SETTINGS = dict(
     ARC_RUNTIME='native', ARC_CODEGEN_PIPELINE='stock',
@@ -115,8 +115,9 @@ def preflight(args):
 
 
 def freeze_sources():
-    paths = {SIM / name for name in ('Makefile', 'partition.py', 'native_build.py')}
-    paths.update(path for directory in ('compiler', 'native') for path in (SIM / directory).rglob('*')
+    paths = {HERE.parent / 'Makefile', SIM / 'Makefile'}
+    paths.update(SIM.glob('*.py'))
+    paths.update(path for directory in (HERE, SIM / 'native') for path in directory.rglob('*')
                  if path.is_file() and '__pycache__' not in path.parts)
     return {str(path): sha(path) for path in sorted(paths) if path.is_file()}
 

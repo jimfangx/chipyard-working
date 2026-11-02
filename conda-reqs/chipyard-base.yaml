@@ -20,20 +20,6 @@ dependencies:
     - conda-gcc-specs
     - binutils
 
-    # Host tools for the reproducible native Arcilator LLVM construction.
-    # Keep all profile producers/consumers and the ThinLTO linker on LLVM 18.
-    - clang=18.1.8
-    - clangxx=18.1.8
-    - lld=18.1.8
-    - llvm-tools=18.1.8
-    - compiler-rt=18.1.8
-    - cmake>=3.20
-    - python>=3.10,<3.11
-    - patch
-    - wget
-    - tar
-    - gzip
-
     # misc
     - autoconf
     - coreutils
@@ -42,8 +28,6 @@ dependencies:
     - make
     - git
     - ninja # needed in case we need to built circt from scratch
-    - libz3>=4,<5 # native solver library required by the CIRCT SDK
-    - zlib # development headers/library required when reconstructing LLVM
     - libnuma # added to prevent libnuma.so.1 not found err on systems without it
     - numactl # same as above
 

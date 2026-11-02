@@ -2,7 +2,7 @@
 
 `full_toolchain.py` constructs complete private `opt` and `llc` executables from an explicitly qualified LLVM source/SDK pair. It supports Release controls, fresh Frontend or IR profile generation, profile-guided reconstruction, and optional ThinLTO. It does not change Arcilator/CIRCT sources, simulator functions, model optimization flags or the installed SDK. Construction alone does not establish correctness or a performance improvement.
 
-The checked-in entry point `./sims/arcilator/build-toolchain.sh`, run after
+The checked-in entry point `./sims/arcilator/setup/build-toolchain.sh`, run after
 Chipyard's `env.sh`, orchestrates the complete source-based recipe. It fetches
 pinned sources, verifies and applies the patch series, generates local model
 references, builds and trains fresh instrumented compilers, reconstructs the

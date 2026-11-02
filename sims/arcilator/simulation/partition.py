@@ -13,6 +13,10 @@ import subprocess
 import tempfile
 from contextlib import ExitStack
 from pathlib import Path
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
 from compiler.partition import plugin
 from compiler.text_spans import UnchangedLines, sparse_text
 
@@ -571,14 +575,14 @@ def prepare(args):
     properties = plugin(tool, getattr(args, 'cxx',
                                       os.environ.get('CXX', 'c++')),
                         sim / 'generated-src/compiler',
-                        sim / 'compiler/Properties.cpp')
+                        sim.parent / 'compiler/Properties.cpp')
     temporal = plugin(tool, getattr(args, 'cxx', os.environ.get('CXX', 'c++')),
                       sim / 'generated-src/compiler',
-                      sim / 'compiler/TemporalProperties.cpp')
+                      sim.parent / 'compiler/TemporalProperties.cpp')
     hierarchy = plugin(tool, getattr(args, 'cxx', os.environ.get('CXX',
                                                                  'c++')),
                        sim / 'generated-src/compiler',
-                       sim / 'compiler/HierarchyFormats.cpp')
+                       sim.parent / 'compiler/HierarchyFormats.cpp')
     subprocess.run([
         args.circt_opt,
         str(normal), '--load-pass-plugin=' + str(properties),

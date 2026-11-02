@@ -1,6 +1,6 @@
-generated-src/
-generated-src-*/
-output/
-simulator-*
+**/generated-src/
+**/generated-src-*/
+**/output/
+**/simulator-*
 __pycache__/
-/trace_hart_*.dasm
+/simulation/trace_hart_*.dasm

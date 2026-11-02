@@ -17,7 +17,8 @@ import subprocess
 import sys
 
 
-PORT = Path(__file__).resolve().parent.parent
+COMPILER = Path(__file__).resolve().parent
+PORT = COMPILER.parent / 'simulation'
 DEFAULT_RECIPE = Path(__file__).with_name('toolchain-configs.json')
 REQUIRED = dict(ARC_RUNTIME='native', ARC_CODEGEN_PIPELINE='stock',
                 ARC_OPT_LEVEL='3', ARC_LLC_OPT_LEVEL='3',
@@ -176,8 +177,8 @@ def prepare_cases(work, sdk, arcilator, settings, jobs, cxx, cc, recipe=None):
              ('opt', 'llc', 'llvm-config', 'firtool', 'circt-opt', 'mlir-translate')}
     tools['arcilator'] = identity(arcilator)
     sources = [Path(__file__), recipe_path, PORT / 'Makefile',
-               PORT / 'compiler/codegen.py', PORT / 'compiler/partition.py',
-               *[PORT / 'compiler' / name for name in
+               COMPILER / 'codegen.py', COMPILER / 'partition.py',
+               *[COMPILER / name for name in
                  ('NativeArithmetic.cpp', 'WideStores.cpp', 'VectorPacking.cpp')]]
     immutable = [identity(p) for p in sources] + list(tools.values())
     def guard():
@@ -229,7 +230,7 @@ def prepare_cases(work, sdk, arcilator, settings, jobs, cxx, cc, recipe=None):
                 names.append('WideStores.cpp')
             if values.get('ARC_VECTOR_PACKING') == '1':
                 names.append('VectorPacking.cpp')
-            libraries = [plugin(sdk / 'bin/opt', str(cxx), cache, PORT / 'compiler' / name)
+            libraries = [plugin(sdk / 'bin/opt', str(cxx), cache, COMPILER / name)
                          for name in names]
             loaded, preparation, optimizer, opt_flags = pipeline(values, libraries)
             raw = identity(native / 'model.ll')

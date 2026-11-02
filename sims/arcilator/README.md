@@ -1,27 +1,14 @@
 # Arcilator file guide
 
-`compiler/` builds the hardware model; `native/` supplies the code that runs during simulation.
+`compiler/` contains model compilation and toolchain construction, `setup/` contains installation resources, and `simulation/` contains simulation sources and generated outputs.
 
 ## Top-level files
 
 | File | Summary |
 | --- | --- |
-| [.gitignore](.gitignore) | Excludes generated simulator files, compiler caches, output directories, and trace dumps from Git. |
-| [Makefile](Makefile) | Builds native or hybrid Arcilator simulators and tracks the inputs and settings needed for incremental compilation. |
+| [.gitignore](.gitignore) | Excludes generated simulator files, compiler caches, output directories, and trace dumps throughout the backend. |
+| [Makefile](Makefile) | Includes the simulation build rules while preserving the public make entry point at the backend root. |
 | [README.md](README.md) | Provides a one-sentence description of every maintained file in the Arcilator backend. |
-| [adapter.py](adapter.py) | Generates the hybrid runtime’s DPI adapter and two-phase state commits from compiler layout metadata. |
-| [build-toolchain.sh](build-toolchain.sh) | Launches the reproducible native compiler toolchain setup after the Chipyard environment is loaded. |
-| [c_sources.py](c_sources.py) | Adds rules to compile C sources as C in a Verilator-generated makefile. |
-| [filelists.py](filelists.py) | Parses HDL source lists and records selected source inputs without invoking an HDL simulator. |
-| [frontend.py](frontend.py) | Lowers generated FIRRTL into CIRCT hardware while preserving foreign analog connections. |
-| [native.py](native.py) | Generates connections between the compiled hardware model and native runtime bindings from compiler metadata. |
-| [native_build.py](native_build.py) | Generates native compilation rules or directly compiles and links the runtime with original C and C++ device drivers. |
-| [native_exports.py](native_exports.py) | Reads compiler DPI export contracts and generates scoped C ABI wrappers for exported SystemVerilog routines. |
-| [native_hw.py](native_hw.py) | Imports selected foreign RTL into CIRCT hardware and prepares its interfaces for native compilation. |
-| [partition.py](partition.py) | Splits generated hardware at foreign-module boundaries and emits the model, boundary wrappers, and connection metadata. |
-| [rtl_libraries.py](rtl_libraries.py) | Discovers vendor RTL libraries omitted from selected Chipyard blackbox packages and records their dependencies. |
-| [settings.py](settings.py) | Updates a build-settings record only when its effective values change so unchanged builds stay cached. |
-| [trace.h](trace.h) | Writes VCD snapshots of Arcilator state using the hybrid simulator’s Verilator simulation time. |
 
 ## compiler/
 
@@ -162,42 +149,74 @@
 | [unpacked-reshape.patch](compiler/verilog/unpacked-reshape.patch) | Reshapes compatible packed elements in fixed unpacked-array assignments while preserving array positions. |
 | [vpi-source-metadata.patch](compiler/verilog/vpi-source-metadata.patch) | Records elaborated source metadata needed for native VPI hierarchy and timing queries. |
 
-## native/
+## setup/
 
 | File | Summary |
 | --- | --- |
-| [additional.cpp](native/additional.cpp) | Binds legacy debug transport, Dromajo, memory trace, logging, and lane-driver models to their original device code. |
-| [analog.cpp](native/analog.cpp) | Implements native bindings for analog constants, digital GPIO cells, and SPI flash models. |
-| [analog_nets.cpp](native/analog_nets.cpp) | Resolves native analog-net connections and propagates their driven values. |
-| [bindings.cpp](native/bindings.cpp) | Implements core native models for state, sparse memory, delays, latches, clocks, and basic simulation peripherals. |
-| [compat.cpp](native/compat.cpp) | Implements DPI scope management, caller data, VPI argument queries, and compatibility error reporting. |
-| [compat.h](native/compat.h) | Declares native DPI scope, context, and open-array compatibility data structures. |
-| [contexts.cpp](native/contexts.cpp) | Registers and connects physical SystemVerilog scope roots and context bindings for DPI calls. |
-| [control.cpp](native/control.cpp) | Exposes runtime print and stop controls, physical time, and scoped export lookups to compiled DPI code. |
-| [cosim.cpp](native/cosim.cpp) | Connects Spike cosimulation, DebugROB, and traffic-evaluation bindings to their original drivers. |
-| [evaluation.cpp](native/evaluation.cpp) | Tracks the active native sampling phase for compiled model and DPI callbacks. |
-| [evaluation.h](native/evaluation.h) | Declares the sampling-phase guard and query interface used to preserve pre-edge evaluation ordering. |
-| [exports.cpp](native/exports.cpp) | Registers scoped DPI exports and dispatches calls using their captured storage and argument layouts. |
-| [files.cpp](native/files.cpp) | Implements native file handles, output channels, stream ownership, and formatted file writes. |
-| [format.cpp](native/format.cpp) | Supplies dynamic real-number formatting missing from the pinned CIRCT Arc runtime. |
-| [format_strings.cpp](native/format_strings.cpp) | Builds and renders native formatting buffers used by lowered SystemVerilog format expressions. |
-| [models.def](native/models.def) | Lists supported hardware model names and maps them to native binding classes. |
-| [open_arrays.cpp](native/open_arrays.cpp) | Implements DPI open-array shape queries and scalar or vector element access. |
-| [peripherals.cpp](native/peripherals.cpp) | Connects debug transport, block devices, networking, branch predictors, BTBs, and TraceROM models to original drivers. |
-| [readmem.cpp](native/readmem.cpp) | Parses SystemVerilog memory initialization files and loads their values into native model storage. |
-| [runtime.cpp](native/runtime.cpp) | Runs native simulation scheduling, settling, timed events, signal updates, and binding dispatch. |
-| [runtime.h](native/runtime.h) | Declares model signals, parameters, binding interfaces, callback contracts, and the native runtime state. |
-| [scope_guard.h](native/scope_guard.h) | Restores the previous DPI context automatically when a scoped native call returns. |
-| [spike.cpp](native/spike.cpp) | Implements the native SpikeBlackBox processor binding using the original Spike driver. |
-| [strings.cpp](native/strings.cpp) | Manages immutable native string handles and copies returned DPI string buffers into owned storage. |
-| [trace.h](native/trace.h) | Writes native model signals and timestamped state changes to VCD waveform files. |
-| [vpi_lifecycle.cpp](native/vpi_lifecycle.cpp) | Registers and dispatches VPI startup, simulation-start, and simulation-end callbacks for native models. |
-| [vpi_lifecycle.h](native/vpi_lifecycle.h) | Declares the optional VPI lifecycle hooks used by the native runtime. |
-| [wide.cpp](native/wide.cpp) | Implements bounded arbitrary-width shifts and other native wide-value helper operations. |
+| [build-circt-from-source.sh](setup/build-circt-from-source.sh) | Builds and installs the pinned CIRCT SDK with the LLVM tools, headers, libraries, and frontend required by the backend. |
+| [build-toolchain.sh](setup/build-toolchain.sh) | Launches the reproducible native compiler toolchain setup after the Chipyard environment is loaded. |
+| [circt.json](setup/circt.json) | Pins the CIRCT SDK release installed by Chipyard setup. |
+| [conda-extended.yaml](setup/conda-extended.yaml) | Pins the optional Clang formatting and analysis tools to the same LLVM release used by the backend. |
+| [conda.yaml](setup/conda.yaml) | Declares the pinned host compiler tools and development libraries required to construct the native Arcilator toolchain. |
+| [installation.rst](setup/installation.rst) | Documents Arcilator toolchain installation and is included by the shared Chipyard setup guide. |
+| [prepare-sdk.sh](setup/prepare-sdk.sh) | Adapts the installed CIRCT SDK to Conda’s Z3 libraries when sourced by Chipyard setup. |
+| [setup.sh](setup/setup.sh) | Constructs and activates the native Arcilator toolchain when sourced by Chipyard setup step 12. |
 
-## native/include/
+## simulation/
 
 | File | Summary |
 | --- | --- |
-| [svdpi.h](native/include/svdpi.h) | Declares the scalar, packed-vector, scope, and open-array SystemVerilog DPI interface used by native drivers. |
-| [vpi_user.h](native/include/vpi_user.h) | Declares the native VPI argument, error, and simulation-lifecycle callback interfaces. |
+| [Makefile](simulation/Makefile) | Builds native or hybrid Arcilator simulators and tracks the inputs and settings needed for incremental compilation. |
+| [adapter.py](simulation/adapter.py) | Generates the hybrid runtime’s DPI adapter and two-phase state commits from compiler layout metadata. |
+| [c_sources.py](simulation/c_sources.py) | Adds rules to compile C sources as C in a Verilator-generated makefile. |
+| [filelists.py](simulation/filelists.py) | Parses HDL source lists and records selected source inputs without invoking an HDL simulator. |
+| [frontend.py](simulation/frontend.py) | Lowers generated FIRRTL into CIRCT hardware while preserving foreign analog connections. |
+| [native.py](simulation/native.py) | Generates connections between the compiled hardware model and native runtime bindings from compiler metadata. |
+| [native_build.py](simulation/native_build.py) | Generates native compilation rules or directly compiles and links the runtime with original C and C++ device drivers. |
+| [native_exports.py](simulation/native_exports.py) | Reads compiler DPI export contracts and generates scoped C ABI wrappers for exported SystemVerilog routines. |
+| [native_hw.py](simulation/native_hw.py) | Imports selected foreign RTL into CIRCT hardware and prepares its interfaces for native compilation. |
+| [partition.py](simulation/partition.py) | Splits generated hardware at foreign-module boundaries and emits the model, boundary wrappers, and connection metadata. |
+| [rtl_libraries.py](simulation/rtl_libraries.py) | Discovers vendor RTL libraries omitted from selected Chipyard blackbox packages and records their dependencies. |
+| [settings.py](simulation/settings.py) | Updates a build-settings record only when its effective values change so unchanged builds stay cached. |
+| [trace.h](simulation/trace.h) | Writes VCD snapshots of Arcilator state using the hybrid simulator’s Verilator simulation time. |
+| [usage.rst](simulation/usage.rst) | Documents native and hybrid Arcilator simulation usage and is included by the shared Chipyard simulation guide. |
+
+## simulation/native/
+
+| File | Summary |
+| --- | --- |
+| [additional.cpp](simulation/native/additional.cpp) | Binds legacy debug transport, Dromajo, memory trace, logging, and lane-driver models to their original device code. |
+| [analog.cpp](simulation/native/analog.cpp) | Implements native bindings for analog constants, digital GPIO cells, and SPI flash models. |
+| [analog_nets.cpp](simulation/native/analog_nets.cpp) | Resolves native analog-net connections and propagates their driven values. |
+| [bindings.cpp](simulation/native/bindings.cpp) | Implements core native models for state, sparse memory, delays, latches, clocks, and basic simulation peripherals. |
+| [compat.cpp](simulation/native/compat.cpp) | Implements DPI scope management, caller data, VPI argument queries, and compatibility error reporting. |
+| [compat.h](simulation/native/compat.h) | Declares native DPI scope, context, and open-array compatibility data structures. |
+| [contexts.cpp](simulation/native/contexts.cpp) | Registers and connects physical SystemVerilog scope roots and context bindings for DPI calls. |
+| [control.cpp](simulation/native/control.cpp) | Exposes runtime print and stop controls, physical time, and scoped export lookups to compiled DPI code. |
+| [cosim.cpp](simulation/native/cosim.cpp) | Connects Spike cosimulation, DebugROB, and traffic-evaluation bindings to their original drivers. |
+| [evaluation.cpp](simulation/native/evaluation.cpp) | Tracks the active native sampling phase for compiled model and DPI callbacks. |
+| [evaluation.h](simulation/native/evaluation.h) | Declares the sampling-phase guard and query interface used to preserve pre-edge evaluation ordering. |
+| [exports.cpp](simulation/native/exports.cpp) | Registers scoped DPI exports and dispatches calls using their captured storage and argument layouts. |
+| [files.cpp](simulation/native/files.cpp) | Implements native file handles, output channels, stream ownership, and formatted file writes. |
+| [format.cpp](simulation/native/format.cpp) | Supplies dynamic real-number formatting missing from the pinned CIRCT Arc runtime. |
+| [format_strings.cpp](simulation/native/format_strings.cpp) | Builds and renders native formatting buffers used by lowered SystemVerilog format expressions. |
+| [models.def](simulation/native/models.def) | Lists supported hardware model names and maps them to native binding classes. |
+| [open_arrays.cpp](simulation/native/open_arrays.cpp) | Implements DPI open-array shape queries and scalar or vector element access. |
+| [peripherals.cpp](simulation/native/peripherals.cpp) | Connects debug transport, block devices, networking, branch predictors, BTBs, and TraceROM models to original drivers. |
+| [readmem.cpp](simulation/native/readmem.cpp) | Parses SystemVerilog memory initialization files and loads their values into native model storage. |
+| [runtime.cpp](simulation/native/runtime.cpp) | Runs native simulation scheduling, settling, timed events, signal updates, and binding dispatch. |
+| [runtime.h](simulation/native/runtime.h) | Declares model signals, parameters, binding interfaces, callback contracts, and the native runtime state. |
+| [scope_guard.h](simulation/native/scope_guard.h) | Restores the previous DPI context automatically when a scoped native call returns. |
+| [spike.cpp](simulation/native/spike.cpp) | Implements the native SpikeBlackBox processor binding using the original Spike driver. |
+| [strings.cpp](simulation/native/strings.cpp) | Manages immutable native string handles and copies returned DPI string buffers into owned storage. |
+| [trace.h](simulation/native/trace.h) | Writes native model signals and timestamped state changes to VCD waveform files. |
+| [vpi_lifecycle.cpp](simulation/native/vpi_lifecycle.cpp) | Registers and dispatches VPI startup, simulation-start, and simulation-end callbacks for native models. |
+| [vpi_lifecycle.h](simulation/native/vpi_lifecycle.h) | Declares the optional VPI lifecycle hooks used by the native runtime. |
+| [wide.cpp](simulation/native/wide.cpp) | Implements bounded arbitrary-width shifts and other native wide-value helper operations. |
+
+## simulation/native/include/
+
+| File | Summary |
+| --- | --- |
+| [svdpi.h](simulation/native/include/svdpi.h) | Declares the scalar, packed-vector, scope, and open-array SystemVerilog DPI interface used by native drivers. |
+| [vpi_user.h](simulation/native/include/vpi_user.h) | Declares the native VPI argument, error, and simulation-lifecycle callback interfaces. |

@@ -11,7 +11,7 @@ import tempfile
 from filelists import source_paths
 
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = Path(__file__).resolve().parents[3]
 
 
 def discover(filelist, root=ROOT):
