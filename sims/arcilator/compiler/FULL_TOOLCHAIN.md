@@ -8,9 +8,9 @@ pinned sources, verifies and applies the patch series, generates local model
 references, builds and trains fresh instrumented compilers, reconstructs the
 ThinLTO/PGO tools, and qualifies all model outputs plus the production plugin API
 before writing an activation script. Its data recipe is `toolchain-configs.json`.
-See [the reproducible setup command](../README.md#reproduce-the-optimized-toolchain-from-this-branch)
-for prerequisites, overrides and resume behavior. The lower-level interfaces
-below remain available for explicit experiments.
+The [file guide](../README.md) lists the setup entry points; run
+`python3 compiler/toolchain.py --help` for command options. The lower-level
+interfaces below remain available for explicit experiments.
 
 Chipyard's normal `build-setup.sh` invokes the `toolchain.py setup` action in
 step 12 after installing the pinned SDK and Conda dependencies. This action
