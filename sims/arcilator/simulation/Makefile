@@ -361,7 +361,7 @@ clean-sim-debug:
 .PHONY: check-arcilator-tools
 check-arcilator-tools:
 	@for tool in $(ARC_FIRTOOL) $(CIRCT_VERILOG) $(CIRCT_OPT) $(ARCILATOR) $(LLVM_OPT) $(LLC) $(LLVM_CONFIG) $(MLIR_TRANSLATE); do \
-	  command -v "$$tool" >/dev/null 2>&1 || { echo "Missing $$tool. Source env.sh and install the full CIRCT suite pinned in sims/arcilator/setup/circt.json using build-setup.sh step 10." >&2; exit 1; }; \
+	  command -v "$$tool" >/dev/null 2>&1 || { echo "Missing $$tool. Source env.sh and install the full CIRCT suite pinned in conda-reqs/circt.json using build-setup.sh step 10." >&2; exit 1; }; \
 	done
 	@test -r $(CIRCT_ROOT)/include/circt/Dialect/Arc/Runtime/ArcRuntime.h -a -r $(CIRCT_ROOT)/lib/libCIRCTArcRuntime.a || \
 	  { echo "CIRCT_ROOT=$(CIRCT_ROOT) must contain the matching CIRCT headers and runtime libraries." >&2; exit 1; }

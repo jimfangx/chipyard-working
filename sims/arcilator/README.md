@@ -155,9 +155,6 @@
 | --- | --- |
 | [build-circt-from-source.sh](setup/build-circt-from-source.sh) | Builds and installs the pinned CIRCT SDK with the LLVM tools, headers, libraries, and frontend required by the backend. |
 | [build-toolchain.sh](setup/build-toolchain.sh) | Launches the reproducible native compiler toolchain setup after the Chipyard environment is loaded. |
-| [circt.json](setup/circt.json) | Pins the CIRCT SDK release installed by Chipyard setup. |
-| [conda-extended.yaml](setup/conda-extended.yaml) | Pins the optional Clang formatting and analysis tools to the same LLVM release used by the backend. |
-| [conda.yaml](setup/conda.yaml) | Declares the pinned host compiler tools and development libraries required to construct the native Arcilator toolchain. |
 | [installation.rst](setup/installation.rst) | Documents Arcilator toolchain installation and is included by the shared Chipyard setup guide. |
 | [prepare-sdk.sh](setup/prepare-sdk.sh) | Adapts the installed CIRCT SDK to Conda’s Z3 libraries when sourced by Chipyard setup. |
 | [setup.sh](setup/setup.sh) | Constructs and activates the native Arcilator toolchain when sourced by Chipyard setup step 12. |
@@ -220,3 +217,11 @@
 | --- | --- |
 | [svdpi.h](simulation/native/include/svdpi.h) | Declares the scalar, packed-vector, scope, and open-array SystemVerilog DPI interface used by native drivers. |
 | [vpi_user.h](simulation/native/include/vpi_user.h) | Declares the native VPI argument, error, and simulation-lifecycle callback interfaces. |
+
+## Conda requirements (`../../conda-reqs/`)
+
+| File | Summary |
+| --- | --- |
+| [arcilator-extended.yaml](../../conda-reqs/arcilator-extended.yaml) | Pins the optional Clang formatting and analysis tools to the same LLVM release used by the backend. |
+| [arcilator.yaml](../../conda-reqs/arcilator.yaml) | Declares the pinned host compiler tools and development libraries required to construct the native Arcilator toolchain. |
+| [circt.json](../../conda-reqs/circt.json) | Pins the CIRCT SDK release installed by Chipyard setup. |

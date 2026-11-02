@@ -9,7 +9,7 @@
 # To update a single package to the latest version compatible with the version constraints in the source:
 #     conda-lock lock  --lockfile conda-requirements-riscv-tools-linux-aarch64-lean.conda-lock.yml.EjWcnW.conda-lock.yml --update PACKAGE
 # To re-solve the entire environment, e.g. after changing a version constraint in the source file:
-#     conda-lock -f ../chipyard-base.yaml -f ../../sims/arcilator/setup/conda.yaml -f ../docs.yaml -f ../riscv-tools.yaml --lockfile conda-requirements-riscv-tools-linux-aarch64-lean.conda-lock.yml.EjWcnW.conda-lock.yml
+#     conda-lock -f ../chipyard-base.yaml -f ../arcilator.yaml -f ../docs.yaml -f ../riscv-tools.yaml --lockfile conda-requirements-riscv-tools-linux-aarch64-lean.conda-lock.yml.EjWcnW.conda-lock.yml
 version: 1
 metadata:
   content_hash:
@@ -25,7 +25,7 @@ metadata:
   - linux-aarch64
   sources:
   - ../chipyard-base.yaml
-  - ../../sims/arcilator/setup/conda.yaml
+  - ../arcilator.yaml
   - ../docs.yaml
   - ../riscv-tools.yaml
 package:

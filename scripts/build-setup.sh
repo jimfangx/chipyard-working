@@ -394,14 +394,14 @@ if run_step "10"; then
 	echo "Building CIRCT from source, and installing to $PREFIX"
 	"$CYDIR/sims/arcilator/setup/build-circt-from-source.sh" --prefix $PREFIX
     else
-	echo "Downloading the CIRCT release pinned in sims/arcilator/setup/circt.json"
+	echo "Downloading the CIRCT release pinned in conda-reqs/circt.json"
 
 	git submodule update --init $CYDIR/tools/install-circt &&
 	    $CYDIR/tools/install-circt/bin/download-release-or-nightly-circt.sh \
 		-f circt-full-static-$CIRCT_ARCH.tar.gz \
 		-i $PREFIX \
 		-v version-file \
-		-x $CYDIR/sims/arcilator/setup/circt.json \
+		-x $CYDIR/conda-reqs/circt.json \
 		-g $GITHUB_TOKEN
     fi
     exit_if_last_command_failed
