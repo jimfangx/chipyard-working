@@ -1,0 +1,15 @@
+--- sky130.lvs.v0.0_1.1.pvl
++++ sky130.lvs.v0.0_1.1.pvl
+@@ -655,8 +655,10 @@
+ 
+ //pwell_all_a = (boundary NOT (OR ptub substrateCutDonut)) OR ptub
+ not ( size boundary -by 0.005 ) substrateCutDonut -outputlayer pwell_all_1
+-not pwell_all_1 ptub -outputlayer pwell_all_2
+-OR pwell_in pwell_all_2 pwell_all
++// Diagnostic isolated-pwell repair: keep the deep-nwell guard ring out of
++// the substrate union, and include the isolated pwell as a separate body.
++not pwell_all_1 (or ptub nwell_cut_dnw) -outputlayer pwell_all_2
++or pwell_in pwell_all_2 ptub -outputlayer pwell_all
+ 
+ 
+ //////////////////////////////////////////////////////////////////

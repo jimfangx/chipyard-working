@@ -1,0 +1,26 @@
+--- deck-metal-candidate.pvl
++++ deck-poly-bends-candidate.pvl
+@@ -715,7 +715,7 @@
+ not (and poly_in poly_res) (or rpm urpm) -outputlayer generic_poly_resistor
+ not poly_in (or prec_resistor_poly generic_poly_resistor) -outputlayer poly
+ device R (res_generic_po) generic_poly_resistor poly (P) poly (N)
+-    -element "R" cmacro RES_PROPERTIES generic_poly_resistor poly
++    -element "R" cmacro SKY130_IO_POLY_BENDS generic_poly_resistor poly
+ 
+ or npn pnp bjt ;
+ 
+@@ -1624,3 +1624,14 @@
+ // need to clean this up:
+ lvs_delete_cell_pin cap_vpp_04p4x04p6_l1m1m2_noshield top   -source ;
+ 
++
++
++// Diagnostic only: com_res_weak's U body has A/W=50.8 um, two bends,
++// and W=0.8 um, against nominal L=50 um. Check other bent resistors too.
++dmacro SKY130_IO_POLY_BENDS dev_shape term_shape {
++    [
++    PROPERTY l, w
++    w = PERIMETER_COINCIDE(dev_shape, term_shape) / 2
++    l = AREA(dev_shape) / w - BENDS(dev_shape) * w / 2
++    ]
++}

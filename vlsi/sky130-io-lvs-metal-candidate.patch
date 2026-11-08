@@ -1,0 +1,39 @@
+--- deck-generic.pvl
++++ deck-metal-candidate.pvl
+@@ -590,14 +590,19 @@
+ layer_map 117 -datatype     4	1264    //cmm5,waffle drop,117:4
+ layer_def met1_res             	1265
+ layer_map 68 -datatype     13 	1265
++layer_map 68 -datatype 15 1265
+ layer_def met2_res             	1266
+ layer_map 69 -datatype     13   1266
++layer_map 69 -datatype 15 1266
+ layer_def met3_res             	1267
+ layer_map 70 -datatype     13	1267
++layer_map 70 -datatype 15 1267
+ layer_def met4_res             	1268
+ layer_map 71 -datatype     13 	1268
++layer_map 71 -datatype 15 1268
+ layer_def met5_res             	1269
+ layer_map 72 -datatype     13	1269
++layer_map 72 -datatype 15 1269
+ 
+ 
+ //////////////////////////////////////////////////////////////////
+@@ -681,11 +686,11 @@
+ or nwell_pin nwell_in -outputlayer nwell
+ //or pwell_pin pwell_create pwell_in -outputlayer pwell
+ 
+-device R (res_generic_m1) met1_res met1 (P) met1 (N) 
+-device R (res_generic_m2) met2_res met2 (P) met2 (N) 
+-device R (res_generic_m3) met3_res met3 (P) met3 (N) 
+-device R (res_generic_m4) met4_res met4 (P) met4 (N) 
+-device R (res_generic_m5) met5_res met5 (P) met5 (N) 
++device R (res_generic_m1) met1_res met1 (P) met1 (N) cmacro RES_PROPERTIES met1_res met1
++device R (res_generic_m2) met2_res met2 (P) met2 (N) cmacro RES_PROPERTIES met2_res met2
++device R (res_generic_m3) met3_res met3 (P) met3 (N) cmacro RES_PROPERTIES met3_res met3
++device R (res_generic_m4) met4_res met4 (P) met4 (N) cmacro RES_PROPERTIES met4_res met4
++device R (res_generic_m5) met5_res met5 (P) met5 (N) cmacro RES_PROPERTIES met5_res met5
+ 
+ select -outside pad areaid.ft -outputlayer bondPad
+ 

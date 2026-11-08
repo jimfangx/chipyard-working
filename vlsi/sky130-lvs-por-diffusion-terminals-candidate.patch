@@ -1,0 +1,15 @@
+--- a/por-diagnostic.pvl
++++ b/por-terminal-candidate.pvl
+@@ -950,10 +950,10 @@
+ // ndiff, pdiff need to include ptap
+ not diff_all nwell -outputlayer ndiff_all
+ not ndiff_all diff_res -outputlayer ndiff
+-select -touch ndiff diff_res -outputlayer np_term
++select -touch nSourceDrain diff_res -outputlayer np_term
+ and diff_all nwell -outputlayer pdiff_all
+ not pdiff_all diff_res -outputlayer pdiff
+-select -touch pdiff diff_res -outputlayer pp_term
++select -touch pSourceDrain diff_res -outputlayer pp_term
+ 
+ 
+ //////////////////////////////////////////////////////////////////

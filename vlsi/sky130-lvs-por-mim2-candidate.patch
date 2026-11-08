@@ -1,0 +1,52 @@
+--- a/por-diagnostic.pvl
++++ b/por-mim2-candidate.pvl
+@@ -157,7 +157,7 @@
+ layer_map 71 -datatype     20	1035    //met4,drawing,71:20
+ layer_def met4_text		1036	
+ layer_map 71 -texttype     20	1036    //met4,text,71:20
+-layer_def via4			1037	
++layer_def via4_in			1037	
+ layer_map 71 -datatype     44	1037    //via4,drawing,71:44
+ layer_def met5_in		1038	
+ layer_map 72 -datatype     20	1038    //met5,drawing,72:20
+@@ -665,6 +665,7 @@
+ // Intermediate Layer Preparation
+ 
+ not via3_in capm -outputlayer via3
++not via4_in cap2m -outputlayer via4
+ or met5_pin met5_in -outputlayer met5_all
+ or met4_pin met4_in -outputlayer met4_all
+ or met3_pin met3_in -outputlayer met3_all
+@@ -935,6 +936,12 @@
+ select -enclose capm via3_in -gt 0 -outputlayer capacitor
+ select -cut -not capm via3_in -outputlayer dummy_capacitor
+ 
++// Candidate M4 MIM: distinct plate connectivity across the dielectric.
++and cap2m met4 -outputlayer POR_MIM2_BOTTOM
++copy cap2m -outputlayer POR_MIM2_TOP
++and cap2m via4_in -outputlayer POR_MIM2_CONTACT
++select -enclose cap2m via4_in -gt 0 -outputlayer POR_MIM2_BODY
++
+ 
+ // Create Photodiode and PhotoArray
+ // Can't do right now, DRM missing information
+@@ -964,6 +971,8 @@
+ 
+ connect met3 bottom_plate
+ connect met4 top_plate
++connect met4 POR_MIM2_BOTTOM
++connect met5 POR_MIM2_TOP -by POR_MIM2_CONTACT
+ 
+ connect li1 pSourceDrain -by licon1
+ connect li1 nSourceDrain -by licon1
+@@ -1530,6 +1539,10 @@
+ 
+ 
+ device C (cap_mim_m3__base) capacitor top_plate (PLUS) bottom_plate (MINUS) < cap_width > < cap_length > -element "C" cmacro CAP_PROPERTIES capacitor cap_width cap_length
++
++angle POR_MIM2_BODY -eq 0 -outputlayer POR_MIM2_WIDTH
++angle POR_MIM2_BODY -eq 90 -outputlayer POR_MIM2_LENGTH
++device C (cap_mim_m3_2) POR_MIM2_BODY POR_MIM2_TOP (PLUS) POR_MIM2_BOTTOM (MINUS) < POR_MIM2_WIDTH > < POR_MIM2_LENGTH > -element "C" cmacro CAP_PROPERTIES POR_MIM2_BODY POR_MIM2_WIDTH POR_MIM2_LENGTH
+ 
+ dmacro RES_PROPERTIES dev_shape term_shape {
+     [ 

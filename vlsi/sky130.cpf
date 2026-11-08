@@ -6,7 +6,7 @@
 # HV cell pins{VPWR, vdd3v3, VPB} => net{VDDIO} (3.3V)
 # HV cell pins {LVPWR, vdd1v8} => net{VDD} (1.8V)
 # HV cell pins {LVGND, vss1v8, VGND, vss3v3, VNB} => net{VSS}
-# ==== IO DOMAIN: cells{iocell_*/iocell, clamp_*, corner_*, IO_FILLER_*} ====
+# ==== IO DOMAIN: cells{iocell_*/iocell, nc_*/iocell, clamp_*, corner_*, IO_FILLER_*} ====
 # IO domain cell pins {VDDIO, VDDIO_Q, VSWITCH} => net {VDDIO} (3.3V)
 # IO domain cell pins {VDDA} => net {VDDA} (1.8V)
 # IO domain cell pins {VCCD, VCCHIB, VCCD1} => net {VDD} (1.8V)
@@ -43,6 +43,7 @@ update_power_domain -name HV -primary_power_net VDDIO -primary_ground_net VSS
 
 create_power_domain -name IO -instances [list \
     {*}[find_design_objects iocell_*/iocell -hierarchical -object inst -pattern_type cell] \
+    {*}[find_design_objects nc_*/iocell -hierarchical -object inst -pattern_type cell] \
     {*}[find_design_objects clamp_* -object inst -pattern_type cell] \
     {*}[find_design_objects corner_* -object inst -pattern_type cell] \
     {*}[find_design_objects IO_FILLER_* -object inst -pattern_type cell] \

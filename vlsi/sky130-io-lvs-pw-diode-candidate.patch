@@ -1,0 +1,13 @@
+--- deck-generic.pvl
++++ deck-pw-diode-repaired.pvl
+@@ -772,7 +772,9 @@
+ //NOT (AND nsdm (AND areaid.de diff)) nwell -outputlayer pw_dio
+ 
+ AND areaid.de nwell -outputlayer nw_dio
+-NOT areaid.de nwell -outputlayer pw_dio
++// Hammer: require the PW diode's n+ diffusion body in its marker.
++not areaid.de nwell -outputlayer SKY130_IO_PW_MARKER
++select -interact SKY130_IO_PW_MARKER (and nsdm diff) -outputlayer pw_dio
+ 
+ NOT (NOT (NOT nw_dio hvtp) lvtn) hvi -outputlayer diode_pd2nw_05v5_rec
+ NOT (NOT (AND nw_dio hvtp) lvtn) hvi -outputlayer diode_pd2nw_05v5_hvt_rec 

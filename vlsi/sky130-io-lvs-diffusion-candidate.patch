@@ -1,0 +1,13 @@
+--- chip-io-diagnostic.pvl
++++ chip-io-diffusion-candidate.pvl
+@@ -999,8 +999,8 @@
+ //////////////////////////////////////////////////////////////////
+ // Device Statements
+ 
+-device R (RES_GENERIC_ND) diff_res np_term (P) np_term (N)
+-device R (RES_GENERIC_PD) diff_res pp_term (P) pp_term (N)
++device R (RES_GENERIC_ND) diff_res np_term (P) np_term (N) cmacro RES_PROPERTIES diff_res np_term
++device R (RES_GENERIC_PD) diff_res pp_term (P) pp_term (N) cmacro RES_PROPERTIES diff_res pp_term
+ 
+ //and tap nwell -outputlayer ntap 
+ //not tap nwell -outputlayer ptap

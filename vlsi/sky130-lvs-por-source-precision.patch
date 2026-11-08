@@ -1,0 +1,11 @@
+--- a/simple_por.spice
++++ b/simple_por.spice
+@@ -140,7 +140,7 @@
+ X1 a_217_207# a_117_181# a_64_207# VNB sky130_fd_pr__nfet_g5v0d10v5 ad=0.111 pd=1.37 as=0.111 ps=1.37 w=0.42 l=0.5
+ X2 VPWR A a_231_463# VPB sky130_fd_pr__pfet_g5v0d10v5 ad=0.341 pd=1.73 as=0.105 ps=1.03 w=0.75 l=0.5
+ X3 VGND A a_217_207# VNB sky130_fd_pr__nfet_g5v0d10v5 ad=0.316 pd=1.45 as=0.0588 ps=0.7 w=0.42 l=0.5
+-X4 a_78_463# VGND VNB sky130_fd_pr__res_generic_nd__hv w=0.29 l=1.36
++X4 a_78_463# VGND VNB sky130_fd_pr__res_generic_nd__hv w=0.29 l=1.355
+ X5 a_64_207# VPWR VPB sky130_fd_pr__res_generic_pd__hv w=0.29 l=3.11
+ X6 X a_117_181# VPWR VPB sky130_fd_pr__pfet_g5v0d10v5 ad=0.398 pd=3.53 as=0.341 ps=1.73 w=1.5 l=0.5
+ X7 a_231_463# A a_117_181# VPB sky130_fd_pr__pfet_g5v0d10v5 ad=0.105 pd=1.03 as=0.199 ps=2.03 w=0.75 l=0.5

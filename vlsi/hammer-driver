@@ -8,8 +8,10 @@ from pathlib import Path
 from typing import Dict, Callable, Optional, List
 
 from hammer.technology.sky130 import SKY130Tech
+from hammer.technology.sky130.lvs_compat import compatibility_enabled
 
 import json
+import os
 import yaml
 
 CHIPTOP_IO_PIN_MAP_PATH = Path(__file__).resolve().parent / "example-sky130-pin-map.yaml"
@@ -2034,10 +2036,34 @@ def draw_areaidld(x: HammerTool) -> bool:
     x.append("create_shape -layer AREAIDLD -rect [get_db designs .core_bbox]")
     return True
 
+def tie_quiet_vddio_rail(x: HammerTool) -> bool:
+    if not use_io_cells(x):
+        return True
+    x.append((Path(__file__).resolve().parent / "sky130-quiet-vddio.tcl").read_text())
+    if compatibility_enabled(x):
+        # Complete the physical PoR connection to the IO macro rail, which
+        # update_power_vias -between_selected_wires cannot see as a wire.
+        x.append((Path(__file__).resolve().parent / "sky130-por-vddio.tcl").read_text())
+    return True
+
 def write_chiptop_netlist_with_pg_pins(x: HammerTool) -> bool:
     if not use_io_cells(x):
         return True
-    x.append(f"write_netlist {x.output_netlist_filename} -top_module_first -top_module ChipTop -exclude_leaf_cells -phys -flat -exclude_insts_of_cells {{ sky130_fd_sc_hd__tap_1 sky130_fd_sc_hd__tap_2 sky130_fd_sc_hd__tapvgnd_1 sky130_fd_sc_hd__tapvpwrvgnd_1 sky130_fd_sc_hd__fill_1 sky130_fd_sc_hd__fill_2 sky130_fd_sc_hd__fill_4 sky130_fd_sc_hd__fill_8 sky130_fd_sc_hd__diode_2 sky130_ef_io__connect_vcchib_vccd_and_vswitch_vddio_and_vssio_vssa_vssd_slice_20um sky130_ef_io__com_bus_slice_10um sky130_ef_io__com_bus_slice_5um sky130_ef_io__com_bus_slice_1um sky130_ef_io__com_bus_slice_20um sky130_ef_io__corner_pad sky130_ef_io__connect_vcchib_vccd_and_vswitch_vddio_and_vssio_vssa_vssd_slice_20um }}")
+    # Respect the selected library and Hammer's physical-only-cell overrides.
+    # For the Cadence SCL this includes FILL*, FILL_DECAP*, and ANTENNA.
+    excluded_cells = list(dict.fromkeys(x.get_physical_only_cells() + [
+        "sky130_ef_io__connect_vcchib_vccd_and_vswitch_vddio_and_vssio_vssa_vssd_slice_20um",
+        "sky130_ef_io__com_bus_slice_1um",
+        "sky130_ef_io__com_bus_slice_5um",
+        "sky130_ef_io__com_bus_slice_10um",
+        "sky130_ef_io__com_bus_slice_20um",
+        "sky130_ef_io__corner_pad",
+    ]))
+    x.append(
+        f"write_netlist {x.output_netlist_filename} -top_module_first "
+        f"-top_module {x.top_module} -exclude_leaf_cells -phys -flat "
+        f"-exclude_insts_of_cells {{ {' '.join(excluded_cells)} }}"
+    )
 
     return True
 
@@ -2056,9 +2082,16 @@ def write_chiptop_drc_lvs_layout(x: HammerTool) -> bool:
         ilm_gds = list(map(lambda ilm: ilm.gds, x.get_input_ilms()))
         gds_files.extend(ilm_gds)
 
-    # ONLY DIFFERENCE FROM HAMMER'S DEFAULT WRITE GDS:
-    gds_files = list(filter(lambda x: "simple_por" not in x, gds_files))
-    gds_files.append("/tools/C/rohankumar/sky130/stac_tapeout/gds/simple_por_drc_lvs.gds")
+    # Use the configured PoR library's GDS alongside its configured schematic.
+    # An alternate verification view must be selected explicitly; silently
+    # merging another project's PoR makes connectivity failures hard to trace.
+    por_override = x.get_setting("technology.sky130.por_drc_lvs_gds")
+    if por_override:
+        por_layout = Path(os.path.expandvars(por_override))
+        if not por_layout.is_file():
+            raise FileNotFoundError(f"PoR DRC/LVS layout not found: {por_layout}")
+        gds_files = [path for path in gds_files if Path(path).stem != "simple_por"]
+        gds_files.append(str(por_layout))
 
     merge_options = "-output_macros" if not x.get_setting("par.inputs.gds_merge") else "-uniquify_cell_names -merge {{ {} }}".format(
         " ".join(gds_files)
@@ -2104,7 +2137,24 @@ def drc_blackboxes(x: HammerTool) -> bool:
     return True
 
 def use_drc_lvs_gds(x: HammerTool) -> bool:
-    x.layout_file = x.layout_file.replace("ChipTop.gds", "ChipTop_drc_lvs.gds")
+    if not use_io_cells(x):
+        return True
+    layout = Path(x.layout_file)
+    if not layout.stem.endswith("_drc_lvs"):
+        layout = layout.with_name(f"{layout.stem}_drc_lvs{layout.suffix}")
+    if not layout.is_file():
+        raise FileNotFoundError(
+            f"DRC/LVS layout not found: {layout}. Regenerate the P&R "
+            "write_chiptop_drc_lvs_layout output before running verification."
+        )
+    x.layout_file = str(layout)
+    return True
+
+def require_lvs_cell_masters(x: HammerTool) -> bool:
+    """Let Pegasus reject missing masters instead of silently deleting instances."""
+    control = Path(x.lvs_ctl_file)
+    contents = control.read_text()
+    control.write_text(contents.replace(" -ignore_instances_with_missing_cell_master", ""))
     return True
 
 class Driver(CLIDriver):
@@ -2196,6 +2246,7 @@ class Driver(CLIDriver):
             HammerTool.make_post_insertion_hook("add_fillers", repair_route_drcs),
 
             HammerTool.make_pre_insertion_hook("write_design", force_bias_pins_nets),
+            HammerTool.make_pre_insertion_hook("write_design", tie_quiet_vddio_rail),
             HammerTool.make_pre_insertion_hook("write_design", draw_areaidld),
             #HammerTool.make_pre_insertion_hook("write_design", ofo_manual_edits),
             HammerTool.make_post_insertion_hook("write_design", write_chiptop_netlist_with_pg_pins),
@@ -2212,17 +2263,14 @@ class Driver(CLIDriver):
         return [
             # HammerTool.make_removal_hook("pegasus_drc_blackbox_srams"),
             HammerTool.make_removal_hook("pegasus_drc_blackbox_io_cells"),
-            
-            # HammerTool.make_pre_insertion_hook("generate_drc_run_file", use_drc_lvs_gds),
+            HammerTool.make_pre_insertion_hook("generate_drc_ctl_file", use_drc_lvs_gds),
             # HammerTool.make_post_insertion_hook("generate_drc_run_file", drc_blackboxes)
         ]
     def get_extra_lvs_hooks(self) -> List[HammerToolHookAction]:
-        # TODO: these are calibre specific, pegasus doesn't have this step name
-        return []
-        # return [
-            # HammerTool.make_pre_insertion_hook("generate_lvs_run_file", use_drc_lvs_gds),
-            # HammerTool.make_post_insertion_hook("generate_lvs_run_file", lvs_blackboxes)
-        # ]
+        return [
+            HammerTool.make_pre_insertion_hook("generate_lvs_ctl_file", use_drc_lvs_gds),
+            HammerTool.make_post_insertion_hook("generate_lvs_ctl_file", require_lvs_cell_masters),
+        ]
 
 if __name__ == '__main__':
     Driver().main()

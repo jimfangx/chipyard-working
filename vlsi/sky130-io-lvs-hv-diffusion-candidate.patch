@@ -1,0 +1,23 @@
+--- chip-io-diagnostic.pvl
++++ chip-io-hv-diffusion-candidate.pvl
+@@ -999,8 +999,8 @@
+ //////////////////////////////////////////////////////////////////
+ // Device Statements
+ 
+-device R (RES_GENERIC_ND) diff_res np_term (P) np_term (N) cmacro RES_PROPERTIES diff_res np_term
+-device R (RES_GENERIC_PD) diff_res pp_term (P) pp_term (N) cmacro RES_PROPERTIES diff_res pp_term
++device R (RES_GENERIC_ND) diff_res np_term (P) np_term (N) cmacro SKY130_IO_POLY_BENDS diff_res np_term
++device R (RES_GENERIC_PD) diff_res pp_term (P) pp_term (N) cmacro SKY130_IO_POLY_BENDS diff_res pp_term
+ 
+ //and tap nwell -outputlayer ntap 
+ //not tap nwell -outputlayer ptap
+@@ -1074,7 +1074,8 @@
+ 
+ and tap Hvi -outputlayer HV_tap
+ 
+-not HV_Diff HV_poly -outputlayer HV_source_drain
++// Diagnostic: retain the electrical gap at HV diffusion resistor bodies.
++not HV_Diff (or HV_poly diff_res) -outputlayer HV_source_drain
+ 
+ select -touch HV_gate HV_source_drain -outputlayer HV_FET_gate
+ 

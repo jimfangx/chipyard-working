@@ -1,0 +1,19 @@
+--- sky130.pwell-fixed.lvs.pvl
++++ sky130.generic-poly.lvs.pvl
+@@ -704,9 +704,13 @@
+ 
+ and pwell dnwell -outputlayer iso_pwell
+ 
+-select -interact poly_in poly_res -outputlayer prec_resistor_poly
+-
+-not poly_in prec_resistor_poly -outputlayer poly
++// Hammer: extract generic poly without changing precision resistor bodies.
++select -interact poly_in poly_res -outputlayer marked_poly_resistor
++select -interact marked_poly_resistor (or rpm urpm) -outputlayer prec_resistor_poly
++not (and poly_in poly_res) (or rpm urpm) -outputlayer generic_poly_resistor
++not poly_in (or prec_resistor_poly generic_poly_resistor) -outputlayer poly
++device R (res_generic_po) generic_poly_resistor poly (P) poly (N)
++    -element "R" cmacro RES_PROPERTIES generic_poly_resistor poly
+ 
+ or npn pnp bjt ;
+ 

@@ -1,0 +1,50 @@
+--- a/chip-io-diagnostic.pvl
++++ b/chip-io-diagnostic.pvl
+@@ -1136,7 +1136,15 @@
+ not nfet_norm_a lvtn -outputlayer nfet_norm
+ and nfet_norm ndiff -outputlayer nfet_01v8_rec
+ 
+-device MN (nfet_01v8) nfet_01v8_rec nfet (G) nSourceDrain (S) nSourceDrain (D) pwell_all (B)
++// Candidate: one full SD contact edge, three active-boundary edges.
++rect_chk nfet_01v8_rec -orthogonal_only SRAM_EDGE_N_RECT
++edge_select -outside SRAM_EDGE_N_RECT nSourceDrain SRAM_EDGE_N_SD_EDGES
++select -with_edge SRAM_EDGE_N_RECT SRAM_EDGE_N_SD_EDGES -eq 1 SRAM_EDGE_N_ONE_SD
++edge_select -inside SRAM_EDGE_N_ONE_SD ndiff SRAM_EDGE_N_ACTIVE_EDGES
++select -with_edge SRAM_EDGE_N_ONE_SD SRAM_EDGE_N_ACTIVE_EDGES -eq 3 SRAM_EDGE_N_GATES
++not nfet_01v8_rec SRAM_EDGE_N_GATES SRAM_EDGE_N_ORDINARY
++device MN (nfet_01v8) SRAM_EDGE_N_ORDINARY nfet (G) nSourceDrain (S) nSourceDrain (D) pwell_all (B)
++device MN (nfet_01v8) SRAM_EDGE_N_GATES nfet (G) nSourceDrain (S) nSourceDrain (D) pwell_all (B) cmacro SRAM_EDGE_PROPERTIES SRAM_EDGE_N_GATES nSourceDrain
+ 
+ and pfet hvtp -outputlayer hvtpfet
+ not pfet HV_FET_gate -outputlayer pfet_norm_a
+@@ -1158,7 +1166,15 @@
+ 
+ and hvtpfet pdiff -outputlayer hvtpfet_01v8_rec
+ 
+-device MP (pfet_01v8_hvt) hvtpfet_01v8_rec hvtpfet (G) pSourceDrain (S) pSourceDrain (D) nwell (B)
++// Candidate: one full SD contact edge, three active-boundary edges.
++rect_chk hvtpfet_01v8_rec -orthogonal_only SRAM_EDGE_P_RECT
++edge_select -outside SRAM_EDGE_P_RECT pSourceDrain SRAM_EDGE_P_SD_EDGES
++select -with_edge SRAM_EDGE_P_RECT SRAM_EDGE_P_SD_EDGES -eq 1 SRAM_EDGE_P_ONE_SD
++edge_select -inside SRAM_EDGE_P_ONE_SD pdiff SRAM_EDGE_P_ACTIVE_EDGES
++select -with_edge SRAM_EDGE_P_ONE_SD SRAM_EDGE_P_ACTIVE_EDGES -eq 3 SRAM_EDGE_P_GATES
++not hvtpfet_01v8_rec SRAM_EDGE_P_GATES SRAM_EDGE_P_ORDINARY
++device MP (pfet_01v8_hvt) SRAM_EDGE_P_ORDINARY hvtpfet (G) pSourceDrain (S) pSourceDrain (D) nwell (B)
++device MP (pfet_01v8_hvt) SRAM_EDGE_P_GATES hvtpfet (G) pSourceDrain (S) pSourceDrain (D) nwell (B) cmacro SRAM_EDGE_PROPERTIES SRAM_EDGE_P_GATES pSourceDrain
+ 
+ 
+ //////////////////////////////////////////////////////////////////
+@@ -1747,3 +1763,13 @@
+ lvs_reduce_device R (res_io_padiso_m3) -parallel yes;
+ lvs_check_property R (res_io_padiso_m3) L l -tolerance 0;
+ lvs_check_property R (res_io_padiso_m3) W w -tolerance 5;
++
++// Only the selected rectangular one-sided gates reach this property macro.
++// Full contact width and gate area give literal dimensions, with no scale fit.
++dmacro SRAM_EDGE_PROPERTIES dev_shape sd_shape {
++    [
++    PROPERTY l, w
++    w = PERIMETER_COINCIDE(dev_shape, sd_shape)
++    l = AREA(dev_shape) / w
++    ]
++}

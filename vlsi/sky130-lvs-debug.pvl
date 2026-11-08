@@ -1,0 +1,34 @@
+// Diagnostic overlay, supplied AFTER sky130.lvs.v0.0_1.1.pvl on the Pegasus
+// command line. Run in a separate directory. Do not add this to signoff decks:
+// these ERC checks intentionally report all shapes on the selected layers.
+// Open sky130-bulk-debug.gds together with the input GDS to inspect coverage.
+
+select_check -erc SKY130_DEBUG_PWELL_ALL SKY130_DEBUG_NFET SKY130_DEBUG_LVT_NFET
+    SKY130_DEBUG_N_SOURCE_DRAIN SKY130_DEBUG_PTAP SKY130_DEBUG_LOCAL_SUBSTRATE
+    SKY130_DEBUG_PTUB SKY130_DEBUG_NFET_BULK_GAPS;
+
+rule SKY130_DEBUG_PWELL_ALL { copy pwell_all; }
+output -erc SKY130_DEBUG_PWELL_ALL -gdsii 900 0 "sky130-bulk-debug.gds" -maximum all;
+
+rule SKY130_DEBUG_NFET { copy nfet_01v8_rec; }
+output -erc SKY130_DEBUG_NFET -gdsii 901 0 "sky130-bulk-debug.gds" -maximum all;
+
+rule SKY130_DEBUG_LVT_NFET { copy lvtnfet_01v8_rec; }
+output -erc SKY130_DEBUG_LVT_NFET -gdsii 902 0 "sky130-bulk-debug.gds" -maximum all;
+
+rule SKY130_DEBUG_N_SOURCE_DRAIN { copy nSourceDrain; }
+output -erc SKY130_DEBUG_N_SOURCE_DRAIN -gdsii 903 0 "sky130-bulk-debug.gds" -maximum all;
+
+rule SKY130_DEBUG_PTAP { copy ptap; }
+output -erc SKY130_DEBUG_PTAP -gdsii 904 0 "sky130-bulk-debug.gds" -maximum all;
+
+rule SKY130_DEBUG_LOCAL_SUBSTRATE { copy localSub; }
+output -erc SKY130_DEBUG_LOCAL_SUBSTRATE -gdsii 905 0 "sky130-bulk-debug.gds" -maximum all;
+
+rule SKY130_DEBUG_PTUB { copy ptub; }
+output -erc SKY130_DEBUG_PTUB -gdsii 906 0 "sky130-bulk-debug.gds" -maximum all;
+
+rule SKY130_DEBUG_NFET_BULK_GAPS {
+    not (or nfet_01v8_rec lvtnfet_01v8_rec HV_ngate_5v0 HV_ngate_5v10v) pwell_all;
+}
+output -erc SKY130_DEBUG_NFET_BULK_GAPS -gdsii 907 0 "sky130-bulk-debug.gds" -maximum all;

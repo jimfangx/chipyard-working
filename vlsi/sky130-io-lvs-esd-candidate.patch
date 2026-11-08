@@ -1,0 +1,21 @@
+--- deck-poly-bends-candidate.pvl
++++ deck-esd-recognition-candidate.pvl
+@@ -1187,9 +1187,15 @@
+ 
+ device MN (nfet_05v0_nvt)  HV_ngate_5v0   HV_FET_gate (G) HV_source_drain (S) HV_source_drain (D) pwell_all (B)
+ 
+-device MN (nfet_g5v0d10v5) HV_ngate_5v10v HV_FET_gate (G) HV_source_drain (S) HV_source_drain (D) pwell_all (B)
+-
+-device MP (pfet_g5v0d10v5) HV_pgate_5v10v HV_FET_gate (G) HV_source_drain (S) HV_source_drain (D) nwell (B)
++and HV_ngate_5v10v areaid.ed -outputlayer IO_ESD_nfet_g5v0d10v5
++not HV_ngate_5v10v IO_ESD_nfet_g5v0d10v5 -outputlayer IO_REGULAR_nfet_g5v0d10v5
++device MN (nfet_g5v0d10v5) IO_REGULAR_nfet_g5v0d10v5 HV_FET_gate (G) HV_source_drain (S) HV_source_drain (D) pwell_all (B)
++device MN (nfet_g5v0d10v5_esd) IO_ESD_nfet_g5v0d10v5 HV_FET_gate (G) HV_source_drain (S) HV_source_drain (D) pwell_all (B)
++
++and HV_pgate_5v10v areaid.ed -outputlayer IO_ESD_pfet_g5v0d10v5
++not HV_pgate_5v10v IO_ESD_pfet_g5v0d10v5 -outputlayer IO_REGULAR_pfet_g5v0d10v5
++device MP (pfet_g5v0d10v5) IO_REGULAR_pfet_g5v0d10v5 HV_FET_gate (G) HV_source_drain (S) HV_source_drain (D) nwell (B)
++device MP (pfet_g5v0d10v5_esd) IO_ESD_pfet_g5v0d10v5 HV_FET_gate (G) HV_source_drain (S) HV_source_drain (D) nwell (B)
+ 
+ 
+ //////////////////////////////////////////////////////////////////

@@ -71,6 +71,11 @@ technology.sky130:
   # then uses vlsi.inputs.pin.assignments for the ordinary ChipTop ports.
   use_io_cells: true
 
+  # Mixed Cadence SCL / openPDKs profile validated by the assembled-chip LVS.
+  # Includes strict ordinary MOS/poly/M1-M4 checks and explicit ESD, M5,
+  # annotated SHORT and PADISO equivalent-width compatibility policies.
+  lvs_mixed_library_compatibility: true
+
   # Cadence SkyWater 130nm PDK Path
   sky130_cds: "/tools/commercial/skywater/sky130_cds/PDK/sky130_release_0.0.9"
   # Cadence SkyWater 130nm Standard Cell Library Path

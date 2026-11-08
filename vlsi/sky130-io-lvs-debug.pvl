@@ -1,0 +1,37 @@
+// IO-only derived-layer diagnostics. Supply AFTER the normal or candidate PVL
+// in a separate run. These ERC checks intentionally report all selected shapes;
+// the resulting ERC status is diagnostic, not a signoff result.
+
+select_check -erc SKY130_IO_POLY_R SKY130_IO_M1_R SKY130_IO_M3_R SKY130_IO_M5_R
+    SKY130_IO_PW_DIO SKY130_IO_PW_SD SKY130_IO_NSD SKY130_IO_BULK
+    SKY130_IO_NATIVE SKY130_IO_HV;
+
+rule SKY130_IO_POLY_R { copy generic_poly_resistor; }
+output -erc SKY130_IO_POLY_R -gdsii 920 0 "sky130-io-debug.gds" -maximum all;
+
+rule SKY130_IO_M1_R { copy met1_res; }
+output -erc SKY130_IO_M1_R -gdsii 921 0 "sky130-io-debug.gds" -maximum all;
+
+rule SKY130_IO_M3_R { copy met3_res; }
+output -erc SKY130_IO_M3_R -gdsii 922 0 "sky130-io-debug.gds" -maximum all;
+
+rule SKY130_IO_M5_R { copy met5_res; }
+output -erc SKY130_IO_M5_R -gdsii 923 0 "sky130-io-debug.gds" -maximum all;
+
+rule SKY130_IO_PW_DIO { copy diode_pw2nd_05v5_rec; }
+output -erc SKY130_IO_PW_DIO -gdsii 924 0 "sky130-io-debug.gds" -maximum all;
+
+rule SKY130_IO_PW_SD { copy PW_SD; }
+output -erc SKY130_IO_PW_SD -gdsii 925 0 "sky130-io-debug.gds" -maximum all;
+
+rule SKY130_IO_NSD { copy nsd; }
+output -erc SKY130_IO_NSD -gdsii 926 0 "sky130-io-debug.gds" -maximum all;
+
+rule SKY130_IO_BULK { copy pwell_all; }
+output -erc SKY130_IO_BULK -gdsii 927 0 "sky130-io-debug.gds" -maximum all;
+
+rule SKY130_IO_NATIVE { copy HV_ngate_5v0; }
+output -erc SKY130_IO_NATIVE -gdsii 928 0 "sky130-io-debug.gds" -maximum all;
+
+rule SKY130_IO_HV { copy HV_ngate_5v10v; }
+output -erc SKY130_IO_HV -gdsii 929 0 "sky130-io-debug.gds" -maximum all;
