@@ -65,7 +65,7 @@ vlsi.technology.routing_layers: null
 
 # Technology paths
 technology.sky130:
-  sky130A: "/scratch/jfx/open-pdks/sky130/sky130A" # TODO(jimfang) bump to tools
+  sky130A: "/tools/SkyWater/130/open-pdks/sky130/sky130A" # TODO(jimfang) bump to tools
 
   # The Scala configuration omits WithSky130EFIOCells, so keep the chip-only
   # IO-ring, filler, PoR and level-shifter hooks disabled here as well.
@@ -77,20 +77,20 @@ technology.sky130:
   lvs_mixed_library_compatibility: true
 
   # Cadence SkyWater 130nm PDK Path
-  sky130_cds: "/tools/commercial/skywater/sky130_cds/PDK/sky130_release_0.0.9"
+  sky130_cds: "/tools/SkyWater/130/sky130_release_0.1.0"
   # Cadence SkyWater 130nm Standard Cell Library Path
-  sky130_scl: "/tools/commercial/skywater/sky130_cds/LIB/sky130_scl_9T_0.1.2" # TODO(jimfang) - change before prod
-  sram22_sky130_macros: "/scratch/jfx/sram22_sky130_macros" # amd 5 scratch for now
+  sky130_scl: "/tools/SkyWater/130/sky130_scl_9T_0.1.2/" # TODO(jimfang) - change before prod
+  sram22_sky130_macros: "/tools/SkyWater/130/sram22_sky130_macros" # amd 5 scratch for now
 
   # Pegasus rule decks provided by the Cadence PDK release
   # drc_deck: "${technology.sky130.sky130_cds}/Sky130_DRC/sky130_rev_0.0_2.12.drc.pvl"
-  drc_deck: "/scratch/jfx/sky130_release_0.1.0/Sky130_DRC/sky130_rev_0.0_2.12.drc.pvl"
+  drc_deck: "/tools/SkyWater/130/sky130_release_0.1.0/Sky130_DRC/sky130_rev_0.0_2.12.drc.pvl"
 
-  pegasus_drc_rules_dir: "/scratch/jfx/sky130_release_0.1.0/Sky130_DRC"
+  pegasus_drc_rules_dir: "/tools/SkyWater/130/sky130_release_0.1.0/Sky130_DRC"
   pegasus_drc_rules_dir_meta: lazysubst
 
   # lvs_deck: "${technology.sky130.sky130_cds}/Sky130_LVS/sky130.lvs.v0.0_1.1.pvl"
-  lvs_deck: "/scratch/jfx/sky130_release_0.1.0/Sky130_LVS/sky130.lvs.v0.0_1.1.pvl"
+  lvs_deck: "/tools/SkyWater/130/sky130_release_0.1.0/Sky130_LVS/sky130.lvs.v0.0_1.1.pvl"
 
   # this key is OPTIONAL, no NDA files will be used if it does not point to a valid path
   sky130_nda: "/path/to/skywater-src-nda"
@@ -101,7 +101,7 @@ technology.sky130:
 
   # caravel: "/scratch/jfx/caravel"
 
-  misc_tapeout_collateral: "/scratch/jfx/cadence-skywater-130-pdk"
+  misc_tapeout_collateral: "/tools/SkyWater/130/cadence-skywater-130-pdk"
 
   # Same planner as the Caravel-sized ring, including explicit filler anchors.
   io_plan_csv: "./example-sky130-pin-map-larger.csv"
