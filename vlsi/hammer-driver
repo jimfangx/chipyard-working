@@ -1,40 +1,47 @@
 #!/usr/bin/env python3
 
-from hammer.vlsi import CLIDriver, HammerTool, HammerDriver, HammerToolHookAction
+from hammer.vlsi import CLIDriver, HammerTool, HammerDriver, HammerToolHookAction, HammerPlaceAndRouteTool
 from hammer.utils import get_or_else, optional_map
 import hammer.tech as hammer_tech
 
 from pathlib import Path
 from typing import Dict, Callable, Optional, List
+from decimal import Decimal, ROUND_CEILING
+from types import SimpleNamespace
 
 from hammer.technology.sky130 import SKY130Tech
 from hammer.technology.sky130.lvs_compat import compatibility_enabled
+from hammer.technology.sky130.io_plan import load_plan, PlanningContext, POR_RIGHT_INSET
 
 import json
 import os
-import yaml
-
-CHIPTOP_IO_PIN_MAP_PATH = Path(__file__).resolve().parent / "example-sky130-pin-map.yaml"
 PERSISTENT_CHIPTOP_IO_NETS = ("VDDIO", "VDD", "VDDA", "VSS") # from nets surfaced in the power plan - see sky130.cpf
 
 
-def load_chiptop_io_nets(pin_map_path: Path = CHIPTOP_IO_PIN_MAP_PATH) -> List[str]:
-    with pin_map_path.open("r") as f:
-        pin_map = yaml.safe_load(f)
-
-    if not isinstance(pin_map, dict) or not isinstance(pin_map.get("pins"), dict):
-        raise ValueError(f"{pin_map_path} must contain a 'pins' mapping")
-
-    chiptop_io_nets = list(pin_map["pins"].values())
-    if not all(isinstance(net, str) for net in chiptop_io_nets):
-        raise ValueError(f"All pin-map values in {pin_map_path} must be net names")
-
-    return chiptop_io_nets + [
-        net for net in PERSISTENT_CHIPTOP_IO_NETS if net not in chiptop_io_nets
-    ]
-
-
-CHIPTOP_IO_NETS = load_chiptop_io_nets()
+def chiptop_io_plan(x: HammerTool):
+    """Read the selected CSV for both placement and promoted port assignment."""
+    try:
+        path = x.get_setting("technology.sky130.io_plan_csv")
+    except KeyError:
+        path = None
+    if not path:
+        # Saved pre-CSV project snapshots select one of these generated files.
+        # Preserve their matching plan rather than silently loading the small ring.
+        legacy = Path(x.get_setting("technology.sky130.io_file")).name
+        known = {"chip-sky130.io": "example-sky130-pin-map.csv",
+                 "chip-sky130-larger.io": "example-sky130-pin-map-larger.csv"}
+        if legacy not in known:
+            raise ValueError("Set technology.sky130.io_plan_csv to the IO planning CSV")
+        path = Path(__file__).resolve().parent / known[legacy]
+    config = {"vlsi.inputs.top_module": x.top_module,
+              "vlsi.inputs.placement_constraints": x.get_setting("vlsi.inputs.placement_constraints"),
+              "technology.sky130.sky130A": x.get_setting("technology.sky130.sky130A")}
+    lef_files = None
+    if hasattr(x, "technology"):
+        lef_files = x.technology.read_libs([hammer_tech.filters.lef_filter],
+                                         hammer_tech.HammerTechnologyUtils.to_plain_item)
+    context = PlanningContext.from_config(config, lef_files)
+    return load_plan(Path(os.path.expandvars(str(path))), context=context)
 
 CHIPTOP_DONT_TOUCH_NETS = ["_commonIO_AMUXBUS_A_wire", "_commonIO_AMUXBUS_B_wire"]
 SKY130_USE_IO_CELLS_SETTING = "technology.sky130.use_io_cells"
@@ -212,11 +219,13 @@ def assign_chiptop_io_pins(x: HammerTool) -> bool:
         # block-level P&R.
         return x.place_pins()  # type: ignore[attr-defined]
 
-    x.logger.info("CHIPTOP_IO_NETS: {}".format(" ".join(CHIPTOP_IO_NETS)))
+    chiptop_io_nets = chiptop_io_plan(x).signal_nets()
+    chiptop_io_nets += [net for net in PERSISTENT_CHIPTOP_IO_NETS if net not in chiptop_io_nets]
+    x.logger.info("CHIPTOP_IO_NETS: {}".format(" ".join(chiptop_io_nets)))
     x.append(f'''
 set_promoted_macro_pin -insts *iocell -pins {{ P_PAD PAD }}
 set_promoted_macro_pin -insts clamp* -pins {{ VDDIO VSSD VCCD VSSA VDDA }}
-assign_io_pins -pins {{ {" ".join(CHIPTOP_IO_NETS)} }}
+assign_io_pins -pins {{ {" ".join(chiptop_io_nets)} }}
 ''')
     return True
 
@@ -271,8 +280,11 @@ def efabless_ring_io(ht: HammerTool) -> bool:
     # - global connections removed - now handled by CPF
     # - add fixing of IO fillers
     # TODO(jimfang) test this hook when IO ring size changes
-    io_file = ht.get_setting("technology.sky130.io_file")
-    ht.append(f"read_io_file {io_file} -no_die_size_adjust") # need to adjust die size manually in example-sky130.yml as well if planning to change die & io ring size
+    io_file = Path(ht.run_dir) / "sky130-io-plan.io"
+    plan = chiptop_io_plan(ht)
+    io_file.write_text(plan.render())
+    ht.logger.info(f"Generated IO placement from {plan.source}: {io_file}")
+    ht.append(f"read_io_file {{{io_file}}} -no_die_size_adjust")
     p_nets = list(map(lambda s: s.name, ht.get_independent_power_nets()))
     g_nets = list(map(lambda s: s.name, ht.get_independent_ground_nets()))
     ht.logger.info("p_nets[0]: {}, g_nets[0]: {}".format(p_nets[0], g_nets[0]))
@@ -640,6 +652,7 @@ def place_por(ht: HammerTool) -> bool:
     if not use_io_cells(ht):
         return True
 
+    ht.append(f"set sky130_por_right_inset {POR_RIGHT_INSET}")
     ht.append(r"""
 ########################################################################
 # Place simple_por at the lower-right corner of the core
@@ -653,7 +666,7 @@ def place_por(ht: HammerTool) -> bool:
 set por_inst "por"
 
 # Placement relationship recovered from ofo-hv-routing.def.
-set por_right_anchor 56.580
+set por_right_anchor $sky130_por_right_inset
 set por_below_core    6.120
 
 ########################################################################
@@ -1124,6 +1137,62 @@ def _has_cached_sram_placement(x: HammerTool) -> bool:
             return True
     return False
 
+SRAM_PLACE_HALO = Decimal("8.28")
+
+
+def sram_macro_channel_plan(x: HammerTool):
+    """Reserve an M2 VSS/VDD pair at any grid phase between SRAM halos."""
+    if (x.get_setting("par.power_straps_mode") != "generate" or
+            x.get_setting("par.generate_power_straps_method") != "by_tracks"):
+        raise ValueError("SRAM PG channel sizing requires the configured by_tracks power grid")
+    ns = "par.generate_power_straps_options.by_tracks"
+    if "met2" not in x.get_setting(ns + ".strap_layers"):
+        raise ValueError("SRAM PG channel sizing requires met2 power straps")
+    metal = x.get_stackup().get_metal("met2")
+    if metal.direction != "vertical":
+        raise ValueError("Sky130 SRAM channel sizing expects vertical met2 straps")
+    powers = x.get_independent_power_nets()
+    selected = x.get_setting(ns + ".power_nets") or [s.name for s in powers]
+    grounds = x.get_independent_ground_nets()
+    if len(grounds) != 1:
+        raise ValueError("SRAM PG channel sizing requires one generated ground net")
+    weights = {s.name: s.weight for s in powers}
+    if not selected or any(name not in weights or weights[name] <= 0 for name in selected):
+        raise ValueError("SRAM PG channel sizing needs valid generated power-net weights")
+    base_tracks = x._get_by_tracks_track_pitch("met2")
+    group_tracks = base_tracks * sum(weights[name] for name in selected)
+    geometry = {}
+
+    def capture(layer, bottom, blockage, pitch, width, spacing, offset, bbox, nets, pins, antenna):
+        geometry.update(pitch=pitch, width=width, spacing=spacing, offset=offset, blockage=blockage)
+        return []
+
+    # Use Hammer's actual width/pitch calculation without emitting routes,
+    # advancing the tool's power-layer state, or writing macro-PG reports.
+    sink = SimpleNamespace(get_stackup=x.get_stackup, logger=x.logger,
+                           _get_power_straps_for_hardmacros=lambda *args: None,
+                           specify_power_straps=capture)
+    setting = lambda key: x._get_by_tracks_metal_setting(key, "met2")
+    width_tracks = int(setting("track_width"))
+    HammerPlaceAndRouteTool.specify_power_straps_by_tracks(
+        sink, "met2", x.get_setting("technology.core.std_cell_rail_layer"),
+        Decimal(str(setting("blockage_spacing"))), group_tracks, width_tracks,
+        int(setting("track_spacing")), int(setting("track_start")),
+        Decimal(str(setting("track_offset"))), None, [grounds[0].name, selected[0]], False,
+        2 * width_tracks == base_tracks, setting("antenna_trim_shape"), setting("pattern"))
+    site = Decimal(str(x.technology.get_placement_site().x))
+    # Allow halo/site snapping and row-rail clipping at both channel edges.
+    # Two site columns per edge exceed the observed ~0.65 um end trimming.
+    end_guard = 2 * site
+    pair_span = 2 * geometry["width"] + geometry["spacing"]
+    keepout = max(SRAM_PLACE_HALO, geometry["blockage"])
+    required = 2 * keepout + geometry["pitch"] + pair_span + 2 * end_guard
+    minimum_x = max(Decimal("41.40"), (required / site).to_integral_value(rounding=ROUND_CEILING) * site)
+    return {**{key: str(value) for key, value in geometry.items()},
+            "pair_span": str(pair_span), "end_guard": str(end_guard),
+            "halo": str(SRAM_PLACE_HALO), "minimum_x": str(minimum_x), "minimum_y": "41.40"}
+
+
 def place_sram_macros(x: HammerTool) -> bool:
     """
     Place SRAM22 macros with Innovus concurrent macro placement.
@@ -1139,7 +1208,7 @@ def place_sram_macros(x: HammerTool) -> bool:
     rather than Hammer's default/generated 2.2 um halo, because the larger
     halo reserves the SRAM pin-escape corridor.
 
-    All other SRAM22 macros:
+    SRAM22 macros:
       route halo: met1 -> met2
       PG blockage: met1
     """
@@ -1157,19 +1226,28 @@ def place_sram_macros(x: HammerTool) -> bool:
     #
     # ----------------------------------------------------------------------
 
-    sram_keepout_tcl = r'''
+    channel = sram_macro_channel_plan(x)
+    Path(x.run_dir, "sram-pg-channel-plan.json").write_text(json.dumps(channel, indent=2) + "\n")
+    channel_helper = Path(__file__).resolve().parent / "sky130-sram-channels.tcl"
+    sram_keepout_tcl = (f'source {{{channel_helper}}}\n'
+                        f'set sky130_sram_channel_min_x {channel["minimum_x"]}\n'
+                        f'set sky130_sram_channel_halo {channel["halo"]}\n'
+                        f'puts "SRAM PG channel: M2 width={channel["width"]}, spacing={channel["spacing"]}, '
+                        f'pair span={channel["pair_span"]}, same-net period={channel["pitch"]}; '
+                        f'minimum macro gap={channel["minimum_x"]} x {channel["minimum_y"]} um"\n') + r'''
         ##############################################################
         # SRAM physical protection
         ##############################################################
 
         proc apply_sram_keepouts {sram_inst} {
+            global sky130_sram_channel_halo
             set sram_name [get_db $sram_inst .name]
 
             # ----------------------------------------------------------
             # Match the route-halo behavior emitted by Hammer's normal
             # hardmacro floorplan script.
             #
-            # Most SRAM22 macros:
+            # SRAM22 macros:
             #
             #   create_route_halo
             #       bottom = met1
@@ -1178,17 +1256,6 @@ def place_sram_macros(x: HammerTool) -> bool:
             #   PG blockage:
             #       met1
             #
-            # Rocket icache tag SRAM:
-            #
-            #   create_route_halo
-            #       bottom = met1
-            #       top    = met4
-            #
-            #   PG blockage:
-            #       met1 met2 met3
-            #
-            # This distinction comes directly from the Hammer-generated
-            # floorplan for this design.
             # ----------------------------------------------------------
 
             set route_halo_top_layer met2
@@ -1197,7 +1264,7 @@ def place_sram_macros(x: HammerTool) -> bool:
             puts "place_sram_macros: protecting $sram_name"
             puts "  route halo:       met1 -> $route_halo_top_layer"
             puts "  route halo space: 2.0"
-            puts "  place halo:       8.28"
+            puts "  place halo:       $sky130_sram_channel_halo"
             puts "  PG block layers:  $pg_blockage_layers"
 
             # ----------------------------------------------------------
@@ -1221,7 +1288,7 @@ def place_sram_macros(x: HammerTool) -> bool:
 
             create_place_halo \
                 -insts $sram_name \
-                -halo_deltas {8.28 8.28 8.28 8.28} \
+                -halo_deltas [lrepeat 4 $sky130_sram_channel_halo] \
                 -snap_to_site
 
             # ----------------------------------------------------------
@@ -1276,6 +1343,7 @@ def place_sram_macros(x: HammerTool) -> bool:
             foreach sram_inst $sram_insts {
                 apply_sram_keepouts $sram_inst
             }
+            sky130_check_sram_channels $sram_insts $sky130_sram_channel_min_x $sky130_sram_channel_halo
 
             # SRAM locations came from the placement-constraint cache.
             # Lock them before normal standard-cell placement proceeds.
@@ -1305,7 +1373,8 @@ def place_sram_macros(x: HammerTool) -> bool:
     # | SRAM |<--- 8.28 halo --->|<--- FREE --->|<--- 8.28 halo --->| SRAM |
     #         \_____________________________________________________/
     #                     -min_space_to_macro
-    # free_channel = min_space_to_macro - 2 × 8.28
+    # Reserve one complete VSS/VDD pair plus a grid period in the free
+    # channel, so neither supply can miss the row rails due to grid phase.
     
     x.append(
         sram_keepout_tcl
@@ -1320,8 +1389,9 @@ def place_sram_macros(x: HammerTool) -> bool:
             -align_range_ratio 1.0 \
             -min_space_to_core 41.40 \
             -forbidden_space_to_core 20.70 \
-            -min_space_to_macro 41.40 \
+            -min_space_to_macro {{{channel["minimum_x"]} {channel["minimum_y"]}}} \
             -forbidden_space_to_macro 20.70 \
+            -honor_strict_spacing_constraint true \
             -parallel_run_length 0.0 \
             -flip_macro_focus narrow_channel
 
@@ -1349,6 +1419,7 @@ def place_sram_macros(x: HammerTool) -> bool:
         foreach sram_inst $sram_insts {{
             apply_sram_keepouts $sram_inst
         }}
+        sky130_check_sram_channels $sram_insts $sky130_sram_channel_min_x $sky130_sram_channel_halo
 
         # Fix only SRAM positions. Standard cells remain under Innovus
         # placement control.
@@ -2039,11 +2110,11 @@ def draw_areaidld(x: HammerTool) -> bool:
 def tie_quiet_vddio_rail(x: HammerTool) -> bool:
     if not use_io_cells(x):
         return True
-    x.append((Path(__file__).resolve().parent / "sky130-quiet-vddio.tcl").read_text())
+    x.append(f"source {{{Path(__file__).resolve().parent / 'sky130-quiet-vddio.tcl'}}}")
     if compatibility_enabled(x):
         # Complete the physical PoR connection to the IO macro rail, which
         # update_power_vias -between_selected_wires cannot see as a wire.
-        x.append((Path(__file__).resolve().parent / "sky130-por-vddio.tcl").read_text())
+        x.append(f"source {{{Path(__file__).resolve().parent / 'sky130-por-vddio.tcl'}}}")
     return True
 
 def write_chiptop_netlist_with_pg_pins(x: HammerTool) -> bool:
@@ -2081,17 +2152,6 @@ def write_chiptop_drc_lvs_layout(x: HammerTool) -> bool:
     if x.hierarchical_mode.is_nonleaf_hierarchical():
         ilm_gds = list(map(lambda ilm: ilm.gds, x.get_input_ilms()))
         gds_files.extend(ilm_gds)
-
-    # Use the configured PoR library's GDS alongside its configured schematic.
-    # An alternate verification view must be selected explicitly; silently
-    # merging another project's PoR makes connectivity failures hard to trace.
-    por_override = x.get_setting("technology.sky130.por_drc_lvs_gds")
-    if por_override:
-        por_layout = Path(os.path.expandvars(por_override))
-        if not por_layout.is_file():
-            raise FileNotFoundError(f"PoR DRC/LVS layout not found: {por_layout}")
-        gds_files = [path for path in gds_files if Path(path).stem != "simple_por"]
-        gds_files.append(str(por_layout))
 
     merge_options = "-output_macros" if not x.get_setting("par.inputs.gds_merge") else "-uniquify_cell_names -merge {{ {} }}".format(
         " ".join(gds_files)

@@ -1,19 +1,24 @@
 # Connect the existing PoR VDDIO met3 trunk to the met4 IO filler rail.
-# Qualified for the saved Sky130RocketConfig placement and filler geometry.
+# IO_FILLER_POR_TAP is the stable instance name for the south PoR supply tap.
+# The ordinary and connected 20 um slices share the lower VDDIO met4 rail.
 proc sky130_connect_por_vddio {} {
     global sky130_por_vddio_via
     if {[info exists sky130_por_vddio_via]} { return }
     set por [get_db insts por]
-    set filler [get_db insts IO_FILLER_MANUAL_S_3]
+    set filler [get_db insts IO_FILLER_POR_TAP]
     if {[llength $por] != 1 || [llength $filler] != 1} {
-        error "PoR VDDIO repair requires one por and one IO_FILLER_MANUAL_S_3"
+        error "PoR VDDIO repair requires one por and one IO_FILLER_POR_TAP"
     }
     if {[get_db $por .base_cell.name] ne "simple_por" || [string tolower [get_db $por .orient]] ne "mx"} {
         error "PoR VDDIO repair requires the expected simple_por master/orientation"
     }
-    if {[get_db $filler .base_cell.name] ne "sky130_ef_io__com_bus_slice_20um" ||
+    set tap_masters {
+        sky130_ef_io__com_bus_slice_20um
+        sky130_ef_io__connect_vcchib_vccd_and_vswitch_vddio_and_vssio_vssa_vssd_slice_20um
+    }
+    if {[get_db $filler .base_cell.name] ni $tap_masters ||
         [string tolower [get_db $filler .orient]] ne "r180"} {
-        error "PoR VDDIO repair requires the expected R180 com_bus_slice_20um filler"
+        error "PoR VDDIO repair requires an R180 ordinary or connected 20 um supply tap"
     }
     lassign [lindex [get_db $por .location] 0] px py
     lassign [lindex [get_db $filler .bbox] 0] fx0 fy0 fx1 fy1

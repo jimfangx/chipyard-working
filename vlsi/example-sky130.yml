@@ -103,6 +103,9 @@ technology.sky130:
 
   misc_tapeout_collateral: "/scratch/jfx/cadence-skywater-130-pdk"
 
+  # CSV is the source of truth; the driver regenerates its .io in par-rundir.
+  io_plan_csv: "./example-sky130-pin-map.csv"
+  io_plan_csv_meta: prependlocal
   io_file: "./chip-sky130.io"
   io_file_meta: prependlocal
 

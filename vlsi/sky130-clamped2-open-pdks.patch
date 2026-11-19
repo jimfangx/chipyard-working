@@ -1,0 +1,69 @@
+diff --git a/sky130/custom/sky130_fd_io/cdl/sky130_ef_io.cdl b/sky130/custom/sky130_fd_io/cdl/sky130_ef_io.cdl
+index e0e2c6ba..bd13123b 100644
+--- a/sky130/custom/sky130_fd_io/cdl/sky130_ef_io.cdl
++++ b/sky130/custom/sky130_fd_io/cdl/sky130_ef_io.cdl
+@@ -489,8 +489,7 @@ Xsky130_fd_io__top_ground_hvc_base
+ 
+ *--------------------------------------------------------------------------
+ * sky130_ef_io__vccd_lvc_clamped2_pad
+-* sky130_ef_io__vccd_lvc_pad with LV clamp connections to VCCD/VSSIO and
+-* VCCD/VSSD, and back-to-back diodes connecting VSSIO to VSSA
++* LV clamps connect VCCD to VSSD; back-to-back diodes connect VSSD to VSSIO.
+ *--------------------------------------------------------------------------
+ 
+ .SUBCKT sky130_ef_io__vccd_lvc_clamped2_pad
+@@ -499,19 +498,13 @@ Xsky130_fd_io__top_ground_hvc_base
+ + VSSIO VSSD VSSIO_Q
+ 
+ * Instantiate the underlying power pad (connects P_PAD to VCCD)
+-Xsky130_fd_io__top_power_lvc_base
+-+ AMUXBUS_A AMUXBUS_B VSSA VCCD VCCD VSSA
+-+ PADISOL PADISOR VCCD VCCD_PAD
+-+ VSSIO VSSD VCCD VCCHIB VDDA VDDIO VDDIO_Q
+-+ VSSA VSSD VSSIO VSSIO_Q VSWITCH
+-+ sky130_fd_io__top_power_lvc_wpad
++Xsky130_fd_io__top_power_lvc_base AMUXBUS_A AMUXBUS_B VSSIO VCCD VCCD VSSA PADISOL PADISOR VCCD VCCD_PAD VSSD VSSD VCCD VCCHIB VDDA VDDIO VDDIO_Q VSSA VSSD VSSIO VSSIO_Q VSWITCH sky130_fd_io__top_power_lvc_wpad
+ 
+ .ENDS
+ 
+ *--------------------------------------------------------------------------
+ * sky130_ef_io__vssd_lvc_clamped2_pad
+-* sky130_ef_io__vssd_lvc_pad with LV clamp connections to VCCD/VSSIO and
+-* VCCD/VSSD, and back-to-back diodes connecting VSSIO to VSSA
++* LV clamps connect VCCD to VSSD; back-to-back diodes connect VSSD to VSSIO.
+ *--------------------------------------------------------------------------
+ 
+ .SUBCKT sky130_ef_io__vssd_lvc_clamped2_pad
+@@ -520,12 +513,7 @@ Xsky130_fd_io__top_power_lvc_base
+ + VSSIO VSSD VSSIO_Q
+ 
+ * Instantiate the underlying ground pad (connects G_PAD to VSSD)
+-Xsky130_fd_io__top_ground_lvc_base
+-+ AMUXBUS_A AMUXBUS_B VSSA VCCD VCCD
+-+ VSSD VSSD_PAD PADISOL PADISOR
+-+ VSSA VSSIO VSSD VCCD VCCHIB VDDA VDDIO VDDIO_Q
+-+ VSSA VSSD VSSIO VSSIO_Q VSWITCH
+-+ sky130_fd_io__top_ground_lvc_wpad
++Xsky130_fd_io__top_ground_lvc_base AMUXBUS_A AMUXBUS_B VSSIO VCCD VCCD VSSD VSSD_PAD VSSA PADISOL PADISOR VSSD VSSD VCCD VCCHIB VDDA VDDIO VDDIO_Q VSSA VSSD VSSIO VSSIO_Q VSWITCH sky130_fd_io__top_ground_lvc_wpad
+ 
+ .ENDS
+ 
+diff --git a/sky130/custom/sky130_fd_io/mag/sky130_ef_io__vssd_lvc_clamped2_pad.mag b/sky130/custom/sky130_fd_io/mag/sky130_ef_io__vssd_lvc_clamped2_pad.mag
+index 9c40f22a..e410ac9c 100644
+--- a/sky130/custom/sky130_fd_io/mag/sky130_ef_io__vssd_lvc_clamped2_pad.mag
++++ b/sky130/custom/sky130_fd_io/mag/sky130_ef_io__vssd_lvc_clamped2_pad.mag
+@@ -77,6 +77,14 @@ rect 0 1390 254 2280
+ rect 14746 1390 15000 2280
+ rect 0 20 254 1070
+ rect 14746 20 15000 1070
++use sky130_ef_io__lvc_vccd_overlay  sky130_ef_io__lvc_vccd_overlay_0
++timestamp 1609281021
++transform 1 0 0 0 1 0
++box -2195 -2184 17228 39586
++use sky130_fd_io__overlay_vssd_lvc  sky130_fd_io__overlay_vssd_lvc_0 $PDKPATH/libs.ref/sky130_fd_io/mag
++timestamp 1617033437
++transform 1 0 0 0 1 -7
++box 0 7 15000 39600
+ use sky130_fd_io__top_ground_lvc_wpad  sky130_fd_io__top_ground_lvc_wpad_1 $PDKPATH/libs.ref/sky130_fd_io/mag
+ timestamp 1617033437
+ transform 1 0 0 0 1 -7

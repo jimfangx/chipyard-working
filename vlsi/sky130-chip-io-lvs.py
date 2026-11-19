@@ -18,6 +18,7 @@ from hammer.technology.sky130.lvs_netlists import (
     patch_pegasus_pwell, patch_pegasus_pw_diode, spice_subcircuits,
 )
 from hammer.technology.sky130.lvs_translate import translate_libraries
+from hammer.technology.sky130.lvs_compat import padiso_wrapper_expansions
 
 
 IO_SUPPLIES = {
@@ -168,13 +169,9 @@ def prepare(source_run, output, *, expand_io_tops=False, diffusion_properties=Fa
                 "sky130_fd_io__top_power_lvc_wpad", "sky130_fd_io__top_ground_lvc_wpad"]
         expansions.extend(name for name in tops if name in available)
     if expand_padiso_wrappers:
-        # Eight supply wrappers each lose two local layout rings when the
-        # partition derivation promotes them to ChipTop (64 segments -> 16 R).
-        # Retain both complete circuits and compare them at that common level.
-        wrappers = ["sky130_ef_io__vssa_hvc_clamped_pad", "sky130_ef_io__vdda_hvc_clamped_pad"]
-        if not all(name in available for name in wrappers):
-            raise ValueError("Expected both PADISO wrapper definitions")
-        expansions.extend(wrappers)
+        # Use the mainline policy for every imported wrapper topology. Retain
+        # complete circuits and compare them at the common parent level.
+        expansions.extend(padiso_wrapper_expansions(cdl.read_text()))
     control += "\nlvs_exclude_hcell " + " ".join(expansions) + ";\n"
     control += ("lvs_filter_option RC RB -device R (res_generic_m1) -source_layout;\n"
                 "lvs_report_max -all;\n")

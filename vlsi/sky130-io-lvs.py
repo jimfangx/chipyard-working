@@ -39,15 +39,18 @@ CASES = [
 ]
 
 
-def assemble_wrapped_pad(io, output):
+def assemble_io_cells(io, output, roots, *, ef_gds=None):
     """Merge the reachable original GDS records, including their properties."""
     cells = {}
     units = None
     library_header = []
-    for index, library in enumerate(["sky130_ef_io__gpiov2_pad_wrapped", "sky130_ef_io", "sky130_fd_io"]):
+    libraries = [io / "gds/sky130_ef_io__gpiov2_pad_wrapped.gds",
+                 Path(ef_gds) if ef_gds is not None else io / "gds/sky130_ef_io.gds",
+                 io / "gds/sky130_fd_io.gds"]
+    for index, library in enumerate(libraries):
         chunks, name, refs = None, None, set()
         seen_cell = False
-        with (io / "gds" / (library + ".gds")).open("rb") as stream:
+        with library.open("rb") as stream:
             while header := stream.read(4):
                 length, kind, _ = struct.unpack(">HBB", header)
                 if length < 4:
@@ -77,7 +80,7 @@ def assemble_wrapped_pad(io, output):
                 elif index == 0 and not seen_cell and kind != 4:
                     library_header.append(record)
     selected = {}
-    pending = [EF + "gpiov2_pad_wrapped"]
+    pending = list(roots)
     while pending:
         name = pending.pop()
         if name in selected:
@@ -90,6 +93,10 @@ def assemble_wrapped_pad(io, output):
         for name in sorted(selected):
             stream.write(selected[name])
         stream.write(struct.pack(">HBB", 4, 4, 0))  # ENDLIB
+
+
+def assemble_wrapped_pad(io, output):
+    return assemble_io_cells(io, output, [EF + "gpiov2_pad_wrapped"])
 
 
 

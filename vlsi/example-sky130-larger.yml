@@ -57,6 +57,10 @@ vlsi.core.max_threads: 32
 technology.core.stackup: "sky130_scl"
 
 vlsi.technology.placement_site: "CoreSite"
+# Do not impose an absolute bottom routing layer. The Innovus hook keeps met1
+# available for pin access and applies met2-met5 as a preferred signal-routing
+# range instead.
+vlsi.technology.routing_layers: null
 
 # Technology paths
 technology.sky130:
@@ -64,7 +68,12 @@ technology.sky130:
 
   # The Scala configuration omits WithSky130EFIOCells, so keep the chip-only
   # IO-ring, filler, PoR and level-shifter hooks disabled here as well.
-  use_io_cells: false
+  use_io_cells: true
+
+  # Mixed Cadence SCL / openPDKs profile validated by the assembled-chip LVS.
+  # Includes strict ordinary MOS/poly/M1-M4 checks and explicit ESD, M5,
+  # annotated SHORT and PADISO equivalent-width compatibility policies.
+  lvs_mixed_library_compatibility: true
 
   # Cadence SkyWater 130nm PDK Path
   sky130_cds: "/tools/commercial/skywater/sky130_cds/PDK/sky130_release_0.0.9"
@@ -93,6 +102,9 @@ technology.sky130:
 
   misc_tapeout_collateral: "/scratch/jfx/cadence-skywater-130-pdk"
 
+  # Same planner as the Caravel-sized ring, including explicit filler anchors.
+  io_plan_csv: "./example-sky130-pin-map-larger.csv"
+  io_plan_csv_meta: prependlocal
   io_file: "./chip-sky130-larger.io"
   io_file_meta: prependlocal
 
