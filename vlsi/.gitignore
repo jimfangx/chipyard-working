@@ -5,3 +5,6 @@ build
 src/test/output-*.json
 generated-src
 output.json
+
+# Hammer is managed as a standalone clone, not a submodule.
+/hammer/
